@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep the hybrid catalog and department/category groupings in a browser-safe data module, so home navigation, category previews and curated sets share one source.
+- Bundle selection is a frontend-only preview until commerce is connected; never imply that a payment or order has been processed.
