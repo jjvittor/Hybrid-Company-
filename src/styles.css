@@ -157,4 +157,8 @@
 }
 @keyframes ticker { 0%,30% {transform:translateY(0)} 33%,63% {transform:translateY(-1.5rem)} 66%,96% {transform:translateY(-3rem)} 100% {transform:translateY(0)} }
 @utility animate-ticker { animation: ticker 9s ease-in-out infinite; }
+@keyframes marquee-x { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@utility animate-marquee-x { animation: marquee-x 22s linear infinite; }
+@utility text-stroke { -webkit-text-stroke: 1.5px var(--foreground); color: transparent; }
+@utility text-stroke-primary-fg { -webkit-text-stroke: 1.5px var(--primary-foreground); color: transparent; }
 @layer base { body { font-family: var(--font-sans); } }
