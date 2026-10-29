@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Search, User, Heart, ShoppingBag, Menu, X, ArrowRight, ChevronLeft, ChevronRight,
+  Search, User, Heart, ShoppingBag, Menu, X, ArrowRight,
   Truck, RefreshCw, ShieldCheck, MessageCircle, Instagram,
 } from "lucide-react";
 import hero from "@/assets/hero.jpg";
@@ -371,4 +371,3 @@ function Footer() {
   );
 }
 
-export { ChevronLeft, ChevronRight };
