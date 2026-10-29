@@ -215,7 +215,7 @@ function Categories() {
           <h2 className="font-display-tight mb-8 text-5xl md:text-6xl">O que você<br />procura?</h2>
           <ul>
             {cats.map((c, k) => (
-              <li key={c.n} className="border-t border-primary-foreground/15 last:border-b">
+              <li key={c.n} className="border-t border-border last:border-b">
                 <a
                   href="#"
                   onMouseEnter={() => setActive(k)}
@@ -332,7 +332,7 @@ function Community() {
           {imgs.map((s, k) => (
             <a key={k} href="https://instagram.com" target="_blank" rel="noreferrer" className="group relative aspect-square overflow-hidden">
               <img src={s} alt={`Post da comunidade ${k + 1}`} loading="lazy" style={{ objectPosition: `${20 + k * 12}% 40%` }} className="h-full w-full object-cover" />
-              <div className="absolute inset-0 grid place-items-center bg-primary/50 opacity-0 transition-opacity group-hover:opacity-100"><Instagram className="size-6 text-primary-foreground" /></div>
+              <div className="absolute inset-0 grid place-items-center bg-background/60 opacity-0 transition-opacity group-hover:opacity-100"><Instagram className="size-6 text-foreground" /></div>
             </a>
           ))}
         </div>
