@@ -66,28 +66,29 @@
 }
 
 :root {
-  --radius: 0rem;
-  --background: oklch(0.975 0.006 85);
-  --foreground: oklch(0.15 0 0);
-  --card: oklch(0.94 0.006 85);
-  --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(0.975 0.006 85);
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.15 0 0);
-  --primary-foreground: oklch(0.975 0.006 85);
-  --secondary: oklch(0.93 0.006 85);
-  --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.93 0.006 85);
-  --muted-foreground: oklch(0.48 0.01 85);
-  --accent: oklch(0.93 0.006 85);
-  --accent-foreground: oklch(0.15 0 0);
-  --highlight: oklch(0.63 0.21 35);
-  --highlight-foreground: oklch(0.98 0 0);
+  --radius: 2px;
+  /* Paleta escura: fundo 0F1411 · superfícies 171E19 · texto EEEBE3 · secundário 9AA396 · acento C08A5E */
+  --background: oklch(0.185 0.012 160); /* 0F1411 */
+  --foreground: oklch(0.935 0.011 95); /* EEEBE3 */
+  --card: oklch(0.235 0.014 155); /* 171E19 */
+  --card-foreground: oklch(0.935 0.011 95);
+  --popover: oklch(0.235 0.014 155);
+  --popover-foreground: oklch(0.935 0.011 95);
+  --primary: oklch(0.685 0.113 58); /* C08A5E — acento, usar com moderação */
+  --primary-foreground: oklch(0.185 0.012 160); /* texto escuro sobre o acento */
+  --secondary: oklch(0.235 0.014 155); /* 171E19 */
+  --secondary-foreground: oklch(0.935 0.011 95);
+  --muted: oklch(0.235 0.014 155);
+  --muted-foreground: oklch(0.70 0.02 150); /* 9AA396 */
+  --accent: oklch(0.235 0.014 155);
+  --accent-foreground: oklch(0.935 0.011 95);
+  --highlight: oklch(0.685 0.113 58); /* C08A5E */
+  --highlight-foreground: oklch(0.185 0.012 160);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.86 0.008 85);
-  --input: oklch(0.86 0.008 85);
-  --ring: oklch(0.15 0 0);
+  --border: oklch(0.935 0.011 95 / 12%); /* texto principal com baixa opacidade */
+  --input: oklch(0.935 0.011 95 / 12%);
+  --ring: oklch(0.685 0.113 58);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -160,5 +161,5 @@
 @keyframes marquee-x { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @utility animate-marquee-x { animation: marquee-x 22s linear infinite; }
 @utility text-stroke { -webkit-text-stroke: 1.5px var(--foreground); color: transparent; }
-@utility text-stroke-primary-fg { -webkit-text-stroke: 1.5px var(--primary-foreground); color: transparent; }
+@utility text-stroke-primary-fg { -webkit-text-stroke: 1.5px var(--foreground); color: transparent; }
 @layer base { body { font-family: var(--font-sans); } }

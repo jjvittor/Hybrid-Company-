@@ -60,7 +60,7 @@ function Index() {
 function Announcement() {
   const msgs = ["Frete grátis acima de R$ 399", "Parcele em até 6x sem juros", "Pix com 5% de desconto"];
   return (
-    <div className="h-6 overflow-hidden bg-primary text-primary-foreground text-[11px] font-semibold uppercase tracking-[0.2em]">
+    <div className="h-6 overflow-hidden border-b border-border bg-background text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.2em]">
       <div className="animate-ticker">
         {msgs.map((m) => <p key={m} className="flex h-6 items-center justify-center">{m}</p>)}
       </div>
@@ -100,7 +100,7 @@ function Header() {
         </div>
       </header>
       <div className={`fixed inset-0 z-50 lg:hidden ${open ? "" : "pointer-events-none"}`}>
-        <div onClick={() => setOpen(false)} className={`absolute inset-0 bg-primary/50 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} />
+        <div onClick={() => setOpen(false)} className={`absolute inset-0 bg-background/80 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} />
         <aside className={`absolute left-0 top-0 h-full w-[82%] max-w-sm bg-background p-6 transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}>
           <div className="flex items-center justify-between">
             <span className="font-display-tight text-2xl">Hybrid Co.</span>
@@ -121,7 +121,7 @@ function Header() {
 
 function Btn({ children, light }: { children: React.ReactNode; light?: boolean }) {
   return (
-    <a href="#" className={`group inline-flex items-center gap-3 px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-colors ${light ? "bg-background text-foreground hover:bg-highlight hover:text-highlight-foreground" : "bg-primary text-primary-foreground hover:bg-highlight hover:text-highlight-foreground"}`}>
+    <a href="#" className={`group inline-flex items-center gap-3 rounded-sm px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-colors ${light ? "border border-foreground/25 text-foreground hover:border-highlight hover:text-highlight" : "bg-primary text-primary-foreground hover:opacity-90"}`}>
       {children}<ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
     </a>
   );
@@ -135,12 +135,12 @@ function Hero() {
   const [i, setI] = useState(0);
   useEffect(() => { const t = setInterval(() => setI((x) => (x + 1) % slides.length), 6000); return () => clearInterval(t); }, []);
   return (
-    <section className="relative h-[calc(100svh-5rem)] min-h-[520px] overflow-hidden bg-primary">
+    <section className="relative h-[calc(100svh-5rem)] min-h-[520px] overflow-hidden bg-background">
       {slides.map((s, k) => (
         <div key={k} className={`absolute inset-0 transition-opacity duration-1000 ${k === i ? "opacity-100" : "opacity-0"}`}>
           <img src={s.img} alt={s.kicker} width={1600} height={1920} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/10 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[1440px] px-4 pb-12 text-primary-foreground md:px-8 md:pb-16">
+          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[1440px] px-4 pb-12 text-foreground md:px-8 md:pb-16">
             <p className="text-xs font-semibold uppercase tracking-[0.3em]">{s.kicker}</p>
             <h1 className="font-display-tight mt-3 whitespace-pre-line text-[22vw] md:text-[11vw] lg:text-[9rem]">{s.title}</h1>
             <p className="mt-4 max-w-sm text-sm opacity-90 md:text-base">{s.sub}</p>
@@ -150,7 +150,7 @@ function Hero() {
       ))}
       <div className="absolute bottom-6 right-4 z-10 flex gap-2 md:right-8">
         {slides.map((_, k) => (
-          <button key={k} aria-label={`Campanha ${k + 1}`} onClick={() => setI(k)} className={`h-1 transition-all ${k === i ? "w-10 bg-primary-foreground" : "w-5 bg-primary-foreground/40"}`} />
+          <button key={k} aria-label={`Campanha ${k + 1}`} onClick={() => setI(k)} className={`h-px transition-all ${k === i ? "w-10 bg-foreground" : "w-5 bg-foreground/30"}`} />
         ))}
       </div>
     </section>
@@ -178,18 +178,12 @@ function Categories() {
   const [active, setActive] = useState(0);
   const cur = cats[active] ?? cats[0]!;
   return (
-    <section className="overflow-hidden border-y border-border bg-primary text-primary-foreground">
-      {/* marquee de rua */}
-      <div className="flex whitespace-nowrap border-b border-primary-foreground/15 py-3" aria-hidden>
-        {[0, 1].map((r) => (
-          <div key={r} className="animate-marquee-x flex shrink-0 items-center gap-8 pr-8">
-            {["Camisetas", "Moletons", "Calças", "Bonés", "Tênis", "Acessórios"].map((w) => (
-              <span key={w} className="font-display-tight flex items-center gap-8 text-2xl md:text-4xl">
-                {w} <span className="text-highlight">✦</span>
-              </span>
-            ))}
-          </div>
-        ))}
+    <section className="overflow-hidden border-y border-border bg-background">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between border-b border-border px-4 py-4 md:px-8">
+        <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em]">
+          <span className="size-1.5 rounded-full bg-highlight" /> Categorias
+        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] opacity-50">06 departamentos</p>
       </div>
 
       <div className="mx-auto grid max-w-[1440px] md:grid-cols-2">
@@ -221,7 +215,7 @@ function Categories() {
           <h2 className="font-display-tight mb-8 text-5xl md:text-6xl">O que você<br />procura?</h2>
           <ul>
             {cats.map((c, k) => (
-              <li key={c.n} className="border-t border-primary-foreground/15 last:border-b">
+              <li key={c.n} className="border-t border-border last:border-b">
                 <a
                   href="#"
                   onMouseEnter={() => setActive(k)}
@@ -248,15 +242,15 @@ function ProductCard({ p }: { p: Product }) {
     <a href="#" className="group block">
       <div className="relative aspect-[4/5] overflow-hidden bg-card">
         <img src={p.img} alt={p.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
-        <img src={p.alt} alt="" loading="lazy" className="absolute inset-0 h-full w-full scale-105 object-cover opacity-0 transition-all duration-500 group-hover:scale-100 group-hover:opacity-100" />
+        <img src={p.alt} alt="" loading="lazy" className="absolute inset-0 h-full w-full scale-[1.03] object-cover opacity-0 transition-all duration-500 group-hover:scale-100 group-hover:opacity-100" />
         {p.tag && (
-          <span className={`absolute left-2 top-2 px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${p.tag === "Novo" ? "bg-background text-foreground" : "bg-highlight text-highlight-foreground"}`}>{p.tag}</span>
+          <span className={`absolute left-2 top-2 rounded-sm px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${p.tag === "Novo" ? "bg-secondary text-secondary-foreground" : "bg-highlight text-highlight-foreground"}`}>{p.tag}</span>
         )}
-        <button aria-label="Favoritar" onClick={(e) => e.preventDefault()} className="absolute right-2 top-2 grid size-8 place-items-center bg-background/80 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"><Heart className="size-4" /></button>
+        <button aria-label="Favoritar" onClick={(e) => e.preventDefault()} className="absolute right-2 top-2 grid size-8 place-items-center rounded-sm bg-background/70 opacity-100 transition-opacity hover:text-highlight md:opacity-0 md:group-hover:opacity-100"><Heart className="size-4" /></button>
       </div>
       <div className="mt-3 space-y-1">
-        <h3 className="text-sm font-medium leading-tight group-hover:underline underline-offset-4">{p.name}</h3>
-        <p className="text-sm font-bold">{brl(p.price)}</p>
+        <h3 className="text-sm font-medium leading-tight transition-colors group-hover:text-highlight">{p.name}</h3>
+        <p className="text-sm font-bold text-highlight">{brl(p.price)}</p>
         <p className="text-xs text-muted-foreground">ou 6x de {brl(p.price / 6)} sem juros</p>
       </div>
     </a>
@@ -276,7 +270,7 @@ function ProductSection({ title, products }: { title: string; products: Product[
 
 function CollabBanner() {
   return (
-    <section className="grid bg-primary text-primary-foreground md:grid-cols-2">
+    <section className="grid border-y border-border bg-secondary text-secondary-foreground md:grid-cols-2">
       <img src={banner} alt="Hybrid Co. x Viaduto Skate Crew" loading="lazy" width={1600} height={1024} className="aspect-[4/3] h-full w-full object-cover md:aspect-auto" />
       <div className="flex flex-col justify-center px-6 py-14 md:px-16 md:py-24">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-highlight">Colaboração</p>
@@ -338,7 +332,7 @@ function Community() {
           {imgs.map((s, k) => (
             <a key={k} href="https://instagram.com" target="_blank" rel="noreferrer" className="group relative aspect-square overflow-hidden">
               <img src={s} alt={`Post da comunidade ${k + 1}`} loading="lazy" style={{ objectPosition: `${20 + k * 12}% 40%` }} className="h-full w-full object-cover" />
-              <div className="absolute inset-0 grid place-items-center bg-primary/50 opacity-0 transition-opacity group-hover:opacity-100"><Instagram className="size-6 text-primary-foreground" /></div>
+              <div className="absolute inset-0 grid place-items-center bg-background/60 opacity-0 transition-opacity group-hover:opacity-100"><Instagram className="size-6 text-foreground" /></div>
             </a>
           ))}
         </div>
@@ -397,26 +391,26 @@ function Footer() {
     { t: "Redes sociais", l: ["Instagram", "TikTok", "YouTube", "Spotify"] },
   ];
   return (
-    <footer className="bg-primary text-primary-foreground">
+    <footer className="border-t border-border bg-secondary text-secondary-foreground">
       <div className="mx-auto max-w-[1440px] px-4 pt-14 md:px-8 md:pt-20">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
           {cols.map((c) => (
             <div key={c.t}>
               <p className="mb-4 text-xs font-bold uppercase tracking-widest">{c.t}</p>
-              <ul className="space-y-2 text-sm opacity-70">{c.l.map((x) => <li key={x}><a href="#" className="hover:opacity-100 hover:text-highlight">{x}</a></li>)}</ul>
+              <ul className="space-y-2 text-sm text-muted-foreground">{c.l.map((x) => <li key={x}><a href="#" className="transition-colors hover:text-highlight">{x}</a></li>)}</ul>
             </div>
           ))}
         </div>
-        <div className="mt-14 flex flex-col gap-6 border-t border-primary-foreground/15 pt-8 md:flex-row md:items-center md:justify-between">
+        <div className="mt-14 flex flex-col gap-6 border-t border-border pt-8 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">
-            {["Pix", "Visa", "Mastercard", "Elo", "Amex", "Boleto"].map((x) => <span key={x} className="border border-primary-foreground/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider">{x}</span>)}
+            {["Pix", "Visa", "Mastercard", "Elo", "Amex", "Boleto"].map((x) => <span key={x} className="rounded-sm border border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{x}</span>)}
           </div>
           <div className="flex gap-2">
-            {["SSL Seguro", "Site Blindado"].map((x) => <span key={x} className="flex items-center gap-1.5 border border-primary-foreground/25 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider"><ShieldCheck className="size-3.5" />{x}</span>)}
+            {["SSL Seguro", "Site Blindado"].map((x) => <span key={x} className="flex items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ShieldCheck className="size-3.5" />{x}</span>)}
           </div>
         </div>
         <p className="font-display-tight mt-14 select-none text-[24vw] leading-[0.8] md:text-[19vw]">Hybrid Co.</p>
-        <div className="flex flex-col gap-1 border-t border-primary-foreground/15 py-6 text-[11px] opacity-60 md:flex-row md:justify-between">
+        <div className="flex flex-col gap-1 border-t border-border py-6 text-[11px] text-muted-foreground md:flex-row md:justify-between">
           <p>Hybrid Co. Comércio de Vestuário Ltda. — CNPJ 00.000.000/0001-00</p>
           <p>Rua Augusta, 0000 — Consolação, São Paulo/SP</p>
           <p>© 2026 Hybrid Co. Todos os direitos reservados.</p>
