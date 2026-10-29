@@ -1,21 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { MENU, PRODUCTS, CATEGORIES, SET_PRODUCTS, SET_TOTAL, type Product, type Department } from "@/lib/hybrid-catalog";
+import scene from "@/assets/hybrid-scene.jpg";
+import setImage from "@/assets/hybrid-set.jpg";
 import {
   Search, User, Heart, ShoppingBag, Menu, X, ArrowRight,
   Truck, RefreshCw, ShieldCheck, MessageCircle, Instagram,
 } from "lucide-react";
-import hero from "@/assets/hero.jpg";
-import banner from "@/assets/banner.jpg";
-import p1 from "@/assets/p1.jpg";
-import p2 from "@/assets/p2.jpg";
+import hero from "@/assets/hybrid-scene.jpg";
+import banner from "@/assets/hybrid-set.jpg";
+import p1 from "@/assets/tee.jpg";
+import p2 from "@/assets/chair.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Hybrid Co. — Streetwear brasileiro | Loja oficial" },
-      { name: "description", content: "Camisetas, moletons, calças, tênis e acessórios Hybrid Co. Frete grátis acima de R$ 399, 6x sem juros e 5% off no Pix." },
-      { property: "og:title", content: "Hybrid Co. — Streetwear brasileiro" },
-      { property: "og:description", content: "Drops, lançamentos e coleções da Hybrid Co. Feito na rua, pensado no Brasil." },
+      { title: "Hybrid Co. — Vestir e Morar | Loja oficial" },
+      { name: "description", content: "Roupas, mobiliário e objetos no mesmo universo estético. Conheça Concreto Dourado, a coleção para vestir e morar da Hybrid Co." },
+      { property: "og:title", content: "Hybrid Co. — Vestir e Morar" },
+      { property: "og:description", content: "Streetwear, mobiliário e objetos. Um mesmo olhar para o corpo e o espaço." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -23,36 +28,49 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const MENU = ["Novidades", "Roupas", "Calçados", "Acessórios", "Coleções", "Sobre"];
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-type Product = { name: string; price: number; img: string; alt: string; tag?: "Novo" | "Últimas unidades"; cat: "Roupas" | "Calçados" | "Acessórios" };
-const PRODUCTS: Product[] = [
-  { name: "Camiseta Heavy Box Off-White", price: 189, img: p1, alt: hero, tag: "Novo", cat: "Roupas" },
-  { name: "Tênis Hybrid Runner Preto", price: 699, img: p2, alt: banner, tag: "Últimas unidades", cat: "Calçados" },
-  { name: "Moletom Concreto Preto", price: 429, img: hero, alt: p1, tag: "Novo", cat: "Roupas" },
-  { name: "Boné Six Panel Preto", price: 159, img: p2, alt: hero, cat: "Acessórios" },
-  { name: "Jaqueta Utility Verde", price: 589, img: banner, alt: p1, tag: "Novo", cat: "Roupas" },
-  { name: "Calça Cargo Wide", price: 399, img: hero, alt: p2, cat: "Roupas" },
-  { name: "Camiseta Básica Cru", price: 149, img: p1, alt: banner, cat: "Roupas" },
-  { name: "Kit Boné + Meia", price: 199, img: p2, alt: p1, tag: "Últimas unidades", cat: "Acessórios" },
-];
-
 function Index() {
+  const [department, setDepartment] = useState<Department | "Todos">("Todos");
+  const [cartOpen, setCartOpen] = useState(false);
+  const [setAdded, setSetAdded] = useState(false);
+  const [size, setSize] = useState("M");
+  const [choosing, setChoosing] = useState(false);
+  const go = (item: string) => {
+    if (item === "Vestir" || item === "Morar" || item === "Novidades") {
+      setDepartment(item === "Novidades" ? "Todos" : item);
+      document.getElementById("novidades")?.scrollIntoView({ behavior: "smooth" });
+    } else document.getElementById(item === "Coleções" ? "colecoes" : "sobre")?.scrollIntoView({ behavior: "smooth" });
+  };
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Announcement />
-      <Header />
-      <Hero />
+      <Header onNavigate={go} onCart={() => { setChoosing(false); setCartOpen(true); }} count={setAdded ? 2 : 0} />
+      <Hero onNavigate={go} />
       <Categories />
-      <ProductSection title="Lançamentos" products={PRODUCTS.slice(0, 8)} />
-      <CollabBanner />
+      <ProductSection title={department === "Todos" ? "Lançamentos" : department} products={PRODUCTS.filter(p => department === "Todos" || p.cat === department)} department={department} onDepartment={setDepartment} />
+      <CompleteSet onBuy={() => { setChoosing(true); setCartOpen(true); }} />
       <BestSellers />
       <Lookbook />
       <Community />
       <Benefits />
       <Newsletter />
       <Footer />
+      <Dialog open={cartOpen} onOpenChange={setCartOpen}>
+        <DialogContent className="rounded-[2px]">
+          <DialogHeader>
+            <DialogTitle>{choosing ? "Seu conjunto Concreto Dourado" : "Sua sacola"}</DialogTitle>
+            <DialogDescription>{choosing || setAdded ? "Camiseta Heavy Box + Vaso Forma Areia" : "Sua sacola está vazia."}</DialogDescription>
+          </DialogHeader>
+          {(choosing || setAdded) && <>
+            <div className="grid grid-cols-2 gap-4">{SET_PRODUCTS.map(p => <div key={p.name}><img src={p.img} alt={p.name} width={768} height={960} className="aspect-[4/5] w-full object-cover" /><p className="mt-2 text-sm">{p.name}</p><p className="mt-1 text-sm text-muted-foreground">{brl(p.price)}</p></div>)}</div>
+            <label className="flex items-center justify-between text-sm">Tamanho da camiseta<select aria-label="Tamanho da camiseta" value={size} onChange={e => setSize(e.target.value)} className="rounded-[2px] border border-input bg-background px-4 py-2">{["P", "M", "G", "GG"].map(x => <option key={x}>{x}</option>)}</select></label>
+            <p className="flex justify-between border-t border-border pt-4 text-sm font-semibold"><span>Total do conjunto</span><span>{brl(SET_TOTAL)}</span></p>
+            {choosing ? <Button onClick={() => { setSetAdded(true); setChoosing(false); }}>Adicionar conjunto à sacola <ShoppingBag /></Button> : <p role="status" className="text-sm">Conjunto na sacola · Camiseta {size}</p>}
+            <p className="text-xs text-muted-foreground">Prévia de compra. Pedidos e pagamentos ainda não estão disponíveis.</p>
+          </>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -68,90 +86,36 @@ function Announcement() {
   );
 }
 
-function Header() {
+function Header({ onNavigate, onCart, count }: { onNavigate: (item: string) => void; onCart: () => void; count: number }) {
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const f = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", f);
-    return () => window.removeEventListener("scroll", f);
-  }, []);
-  return (
-    <>
-      <header className={`sticky top-0 z-40 bg-background/95 backdrop-blur transition-shadow ${scrolled ? "border-b border-border" : ""}`}>
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between px-4 md:h-16 md:px-8">
-          <div className="flex items-center gap-3 lg:hidden">
-            <button aria-label="Abrir menu" onClick={() => setOpen(true)}><Menu className="size-5" /></button>
-            <button aria-label="Buscar"><Search className="size-5" /></button>
-          </div>
-          <a href="/" className="font-display-tight text-2xl md:text-3xl lg:order-first">Hybrid Co.</a>
-          <nav className="hidden gap-7 text-xs font-semibold uppercase tracking-widest lg:flex">
-            {MENU.map((m) => <a key={m} href="#" className="hover:text-highlight transition-colors">{m}</a>)}
-          </nav>
-          <div className="flex items-center gap-4">
-            <button aria-label="Buscar" className="hidden lg:block"><Search className="size-5" /></button>
-            <button aria-label="Conta" className="hidden sm:block"><User className="size-5" /></button>
-            <button aria-label="Favoritos" className="hidden sm:block"><Heart className="size-5" /></button>
-            <button aria-label="Carrinho" className="relative">
-              <ShoppingBag className="size-5" />
-              <span className="absolute -right-2 -top-2 grid size-4 place-items-center rounded-full bg-highlight text-[10px] font-bold text-highlight-foreground">2</span>
-            </button>
-          </div>
-        </div>
-      </header>
-      <div className={`fixed inset-0 z-50 lg:hidden ${open ? "" : "pointer-events-none"}`}>
-        <div onClick={() => setOpen(false)} className={`absolute inset-0 bg-background/80 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} />
-        <aside className={`absolute left-0 top-0 h-full w-[82%] max-w-sm bg-background p-6 transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}>
-          <div className="flex items-center justify-between">
-            <span className="font-display-tight text-2xl">Hybrid Co.</span>
-            <button aria-label="Fechar menu" onClick={() => setOpen(false)}><X className="size-5" /></button>
-          </div>
-          <nav className="mt-10 flex flex-col gap-5">
-            {MENU.map((m) => <a key={m} href="#" className="font-display-tight text-4xl">{m}</a>)}
-          </nav>
-          <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-sm">
-            <a href="#" className="flex items-center gap-2"><User className="size-4" /> Minha conta</a>
-            <a href="#" className="flex items-center gap-2"><Heart className="size-4" /> Favoritos</a>
-          </div>
-        </aside>
+  return <>
+    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 md:h-20 md:px-8">
+        <Button variant="ghost" size="icon" aria-label="Abrir menu" className="lg:hidden" onClick={() => setOpen(true)}><Menu /></Button>
+        <a href="/" className="font-display-tight text-2xl md:text-3xl">Hybrid Co.</a>
+        <nav aria-label="Menu principal" className="hidden gap-7 lg:flex">{MENU.map(m => <Button variant="ghost" key={m} onClick={() => onNavigate(m)} className="px-0 text-sm hover:bg-transparent hover:text-highlight">{m}</Button>)}</nav>
+        <div className="flex items-center gap-2"><Button variant="ghost" size="icon" aria-label="Buscar" className="hidden sm:inline-flex"><Search /></Button><Button variant="ghost" size="icon" aria-label="Conta" className="hidden sm:inline-flex"><User /></Button><Button variant="ghost" size="icon" aria-label="Carrinho" className="relative" onClick={onCart}><ShoppingBag />{count > 0 && <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-highlight text-[10px] text-highlight-foreground">{count}</span>}</Button></div>
       </div>
-    </>
-  );
+    </header>
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="rounded-[2px]"><DialogHeader><DialogTitle className="font-display-tight text-3xl">Hybrid Co.</DialogTitle><DialogDescription>Vestir e Morar</DialogDescription></DialogHeader><nav className="flex flex-col items-start gap-3">{MENU.map(m => <Button key={m} variant="ghost" className="text-xl" onClick={() => { setOpen(false); onNavigate(m); }}>{m}</Button>)}</nav></DialogContent></Dialog>
+  </>;
 }
 
 function Btn({ children, light }: { children: React.ReactNode; light?: boolean }) {
-  return (
-    <a href="#" className={`group inline-flex items-center gap-3 rounded-sm px-7 py-4 text-xs font-bold uppercase tracking-[0.2em] transition-colors ${light ? "border border-foreground/25 text-foreground hover:border-highlight hover:text-highlight" : "bg-primary text-primary-foreground hover:opacity-90"}`}>
-      {children}<ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-    </a>
-  );
+  return <Button asChild variant={light ? "outline" : "default"} className="h-12 px-6"><a href="#colecoes">{children}<ArrowRight /></a></Button>;
 }
 
-function Hero() {
-  const slides = [
-    { img: hero, kicker: "Coleção Verão 26", title: "Concreto\nDourado", sub: "Peças pesadas para dias quentes na cidade." },
-    { img: banner, kicker: "Drop 04", title: "Sob o\nViaduto", sub: "Utilitário, técnico, feito pra rua." },
-  ];
-  const [i, setI] = useState(0);
-  useEffect(() => { const t = setInterval(() => setI((x) => (x + 1) % slides.length), 6000); return () => clearInterval(t); }, []);
+function Hero({ onNavigate }: { onNavigate: (item: string) => void }) {
   return (
-    <section className="relative h-[calc(100svh-5rem)] min-h-[520px] overflow-hidden bg-background">
-      {slides.map((s, k) => (
-        <div key={k} className={`absolute inset-0 transition-opacity duration-1000 ${k === i ? "opacity-100" : "opacity-0"}`}>
-          <img src={s.img} alt={s.kicker} width={1600} height={1920} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 mx-auto max-w-[1440px] px-4 pb-12 text-foreground md:px-8 md:pb-16">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em]">{s.kicker}</p>
-            <h1 className="font-display-tight mt-3 whitespace-pre-line text-[22vw] md:text-[11vw] lg:text-[9rem]">{s.title}</h1>
-            <p className="mt-4 max-w-sm text-sm opacity-90 md:text-base">{s.sub}</p>
-            <div className="mt-6"><Btn light>Ver coleção</Btn></div>
-          </div>
-        </div>
-      ))}
-      <div className="absolute bottom-6 right-4 z-10 flex gap-2 md:right-8">
-        {slides.map((_, k) => (
-          <button key={k} aria-label={`Campanha ${k + 1}`} onClick={() => setI(k)} className={`h-px transition-all ${k === i ? "w-10 bg-foreground" : "w-5 bg-foreground/30"}`} />
-        ))}
+    <section aria-label="Coleção Concreto Dourado" className="hybrid-hero relative overflow-hidden bg-background">
+      <div className="hero-heading relative z-10 px-4 py-8 text-center md:absolute md:inset-x-0 md:top-10 md:p-0">
+        <p className="text-xs text-muted-foreground md:text-foreground">Coleção 26 · Vestir e Morar</p>
+        <h1 className="font-display-tight mt-4 text-5xl md:text-7xl">Concreto<br className="md:hidden" /> Dourado</h1>
+        <p className="mt-4 text-sm text-muted-foreground md:text-foreground">Um mesmo olhar. Do corpo ao espaço.</p>
+      </div>
+      <img src={scene} alt="Coleção Concreto Dourado: streetwear à esquerda, poltrona e vaso à direita, na mesma cena" width={1920} height={1024} fetchPriority="high" className="hero-scene w-full object-cover md:absolute md:inset-0 md:h-full" />
+      <div className="relative z-10 mx-auto grid w-full max-w-[1440px] grid-cols-2 border-t border-border md:absolute md:inset-x-0 md:bottom-0 md:border-t-0">
+        {[{ n: "Vestir", d: "Heavy cotton. Silhueta ampla." }, { n: "Morar", d: "Formas puras. Novas matérias." }].map((x, i) => <div key={x.n} className={`flex flex-col items-start gap-2 bg-background/85 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-8 md:py-6 ${i === 0 ? "border-r border-border" : ""}`}><div><p className="font-display-tight text-2xl">{x.n}</p><p className="mt-2 hidden text-xs text-muted-foreground sm:block">{x.d}</p></div><Button variant="ghost" onClick={() => onNavigate(x.n)} className="h-9 px-0 text-xs hover:bg-transparent hover:text-highlight">Explorar {x.n.toLowerCase()}<ArrowRight /></Button></div>)}
       </div>
     </section>
   );
@@ -167,123 +131,36 @@ function SectionHead({ title, cta = "Ver tudo" }: { title: string; cta?: string 
 }
 
 function Categories() {
-  const cats = [
-    { n: "Camisetas", img: p1, pos: "center", tag: "18 peças" },
-    { n: "Moletons", img: hero, pos: "50% 35%", tag: "Peso 400gsm" },
-    { n: "Calças", img: hero, pos: "50% 80%", tag: "Cargo & wide" },
-    { n: "Bonés", img: p2, pos: "85% 60%", tag: "6 panel" },
-    { n: "Tênis", img: p2, pos: "20% 55%", tag: "Runner" },
-    { n: "Acessórios", img: banner, pos: "40% 20%", tag: "Meias, bags" },
-  ];
   const [active, setActive] = useState(0);
-  const cur = cats[active] ?? cats[0]!;
-  return (
-    <section className="overflow-hidden border-y border-border bg-background">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between border-b border-border px-4 py-4 md:px-8">
-        <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em]">
-          <span className="size-1.5 rounded-full bg-highlight" /> Categorias
-        </p>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] opacity-50">06 departamentos</p>
-      </div>
-
-      <div className="mx-auto grid max-w-[1440px] md:grid-cols-2">
-        {/* palco: imagem da categoria ativa */}
-        <div className="relative order-first aspect-[4/3] overflow-hidden md:order-last md:aspect-auto md:min-h-[640px]">
-          {cats.map((c, k) => (
-            <img
-              key={c.n}
-              src={c.img}
-              alt={c.n}
-              loading="lazy"
-              style={{ objectPosition: c.pos }}
-              className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ${k === active ? "scale-100 opacity-100" : "scale-110 opacity-0"}`}
-            />
-          ))}
-          <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent" />
-          {/* etiqueta adesiva */}
-          <span className="absolute left-4 top-4 -rotate-6 bg-highlight px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-highlight-foreground md:left-8 md:top-8">
-            {cur.tag}
-          </span>
-          <span className="font-display-tight text-stroke-primary-fg pointer-events-none absolute -bottom-2 left-3 select-none text-[26vw] leading-none opacity-60 md:left-6 md:text-[11rem]">
-            {String(active + 1).padStart(2, "0")}
-          </span>
-        </div>
-
-        {/* lista tipográfica */}
-        <div className="flex flex-col justify-center px-4 py-10 md:px-12 md:py-20">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-highlight">Explore por categoria</p>
-          <h2 className="font-display-tight mb-8 text-5xl md:text-6xl">O que você<br />procura?</h2>
-          <ul>
-            {cats.map((c, k) => (
-              <li key={c.n} className="border-t border-border last:border-b">
-                <a
-                  href="#"
-                  onMouseEnter={() => setActive(k)}
-                  onFocus={() => setActive(k)}
-                  onClick={(e) => e.preventDefault()}
-                  className="group flex items-center justify-between gap-4 py-3 md:py-4"
-                >
-                  <span className={`font-display-tight text-4xl transition-all duration-300 md:text-6xl ${k === active ? "translate-x-2 text-highlight md:translate-x-4" : "text-stroke-primary-fg opacity-70 group-hover:opacity-100"}`}>
-                    {c.n}
-                  </span>
-                  <ArrowRight className={`size-6 shrink-0 transition-all duration-300 md:size-8 ${k === active ? "translate-x-0 text-highlight opacity-100" : "-translate-x-3 opacity-0"}`} />
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
+  const current = CATEGORIES[active];
+  if (!current) return null;
+  return <section className="border-y border-border">
+    <div className="mx-auto flex max-w-[1440px] items-center justify-between border-b border-border px-4 py-5 md:px-8"><p className="text-xs text-muted-foreground">Categorias</p><p className="text-xs text-muted-foreground">Vestir / Morar</p></div>
+    <div className="mx-auto grid max-w-[1440px] md:grid-cols-2">
+      <div className="px-4 py-10 md:px-12 md:py-16"><h2 className="font-display-tight mb-8 text-4xl md:text-5xl">Seu universo</h2><ul>{CATEGORIES.map((c, k) => <li key={c.n} className="border-t border-border last:border-b"><Button variant="ghost" onMouseEnter={() => setActive(k)} onFocus={() => setActive(k)} onClick={() => setActive(k)} aria-pressed={active === k} className={`h-14 w-full justify-between rounded-none px-0 text-left hover:bg-transparent md:h-16 ${active === k ? "text-highlight" : "text-foreground"}`}><span className="text-xl font-normal md:text-2xl">{c.n}</span><span className="flex items-center gap-4"><span className="text-xs font-normal text-muted-foreground">{c.department}</span><ArrowRight className={active === k ? "opacity-100" : "opacity-0"} /></span></Button></li>)}</ul></div>
+      <div className="relative aspect-[4/5] overflow-hidden bg-card md:aspect-auto"><img src={current.img} alt={current.n} width={768} height={960} loading="lazy" className="h-full w-full object-cover" /><p className="absolute bottom-4 left-4 rounded-[2px] bg-background/85 px-3 py-2 text-xs text-foreground md:bottom-6 md:left-6">{current.department} / {current.n}</p></div>
+    </div>
+  </section>;
 }
 
 function ProductCard({ p }: { p: Product }) {
-  return (
-    <a href="#" className="group block">
-      <div className="relative aspect-[4/5] overflow-hidden bg-card">
-        <img src={p.img} alt={p.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
-        <img src={p.alt} alt="" loading="lazy" className="absolute inset-0 h-full w-full scale-[1.03] object-cover opacity-0 transition-all duration-500 group-hover:scale-100 group-hover:opacity-100" />
-        {p.tag && (
-          <span className={`absolute left-2 top-2 rounded-sm px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${p.tag === "Novo" ? "bg-secondary text-secondary-foreground" : "bg-highlight text-highlight-foreground"}`}>{p.tag}</span>
-        )}
-        <button aria-label="Favoritar" onClick={(e) => e.preventDefault()} className="absolute right-2 top-2 grid size-8 place-items-center rounded-sm bg-background/70 opacity-100 transition-opacity hover:text-highlight md:opacity-0 md:group-hover:opacity-100"><Heart className="size-4" /></button>
-      </div>
-      <div className="mt-3 space-y-1">
-        <h3 className="text-sm font-medium leading-tight transition-colors group-hover:text-highlight">{p.name}</h3>
-        <p className="text-sm font-bold text-highlight">{brl(p.price)}</p>
-        <p className="text-xs text-muted-foreground">ou 6x de {brl(p.price / 6)} sem juros</p>
-      </div>
-    </a>
-  );
+  const [favorite, setFavorite] = useState(false);
+  return <article className="group">
+    <div className="relative aspect-[4/5] overflow-hidden bg-card"><img src={p.img} alt={p.name} width={768} height={960} loading="lazy" className="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-90" />{p.tag && <span className="absolute left-3 top-3 rounded-[2px] bg-background/85 px-2 py-1 text-[11px]">{p.tag}</span>}<Button variant="ghost" size="icon" aria-label={`Favoritar ${p.name}`} aria-pressed={favorite} onClick={() => setFavorite(!favorite)} className="absolute right-2 top-2 bg-background/75"><Heart className={favorite ? "fill-highlight text-highlight" : ""} /></Button></div>
+    <div className="mt-4 space-y-1.5"><p className="text-xs text-muted-foreground">{p.cat} / {p.category}</p><h3 className="text-sm font-medium">{p.name}</h3><p className="text-sm font-semibold text-highlight">{brl(p.price)}</p><p className="text-xs text-muted-foreground">ou 6x de {brl(p.price / 6)} sem juros</p></div>
+  </article>;
 }
 
-function ProductSection({ title, products }: { title: string; products: Product[] }) {
-  return (
-    <section className="mx-auto max-w-[1440px] px-4 pb-14 md:px-8 md:pb-24">
-      <SectionHead title={title} />
-      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:gap-x-4 md:gap-y-10 md:overflow-visible md:px-0">
-        {products.map((p) => <div key={p.name} className="w-[68%] shrink-0 snap-start sm:w-[42%] md:w-auto"><ProductCard p={p} /></div>)}
-      </div>
-    </section>
-  );
+function ProductSection({ title, products, department, onDepartment }: { title: string; products: Product[]; department: Department | "Todos"; onDepartment: (d: Department | "Todos") => void }) {
+  return <section id="novidades" className="mx-auto max-w-[1440px] scroll-mt-24 px-4 py-16 md:px-8 md:py-24"><div className="mb-8 flex flex-wrap items-end justify-between gap-6"><h2 className="font-display-tight text-5xl md:text-6xl">{title}</h2><div className="flex gap-5">{(["Todos", "Vestir", "Morar"] as const).map(d => <Button key={d} variant="ghost" onClick={() => onDepartment(d)} aria-pressed={department === d} className={`rounded-none border-b px-0 hover:bg-transparent ${department === d ? "border-highlight text-highlight" : "border-transparent text-muted-foreground"}`}>{d}</Button>)}</div></div><div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-x-4 md:gap-y-10">{products.map(p => <ProductCard key={p.name} p={p} />)}</div></section>;
 }
 
-function CollabBanner() {
-  return (
-    <section className="grid border-y border-border bg-secondary text-secondary-foreground md:grid-cols-2">
-      <img src={banner} alt="Hybrid Co. x Viaduto Skate Crew" loading="lazy" width={1600} height={1024} className="aspect-[4/3] h-full w-full object-cover md:aspect-auto" />
-      <div className="flex flex-col justify-center px-6 py-14 md:px-16 md:py-24">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-highlight">Colaboração</p>
-        <h2 className="font-display-tight mt-4 text-6xl md:text-8xl">Hybrid Co.<br />× Viaduto</h2>
-        <p className="mt-6 max-w-md text-sm opacity-80 md:text-base">Uma cápsula feita com a crew que cresceu andando debaixo do concreto. Jaquetas utility, bonés e calças pensadas pra cair e levantar.</p>
-        <div className="mt-8"><Btn light>Ver collab</Btn></div>
-      </div>
-    </section>
-  );
+function CompleteSet({ onBuy }: { onBuy: () => void }) {
+  return <section id="colecoes" className="scroll-mt-24 border-y border-border bg-secondary"><div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8 md:py-20"><div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><h2 className="max-w-xl text-3xl font-medium leading-tight md:text-4xl">Complete o look,<br />complete o espaço</h2><p className="text-sm text-muted-foreground">Concreto Dourado · Seleção híbrida 01</p></div><img src={setImage} alt="Camiseta off-white e vaso de cerâmica em uma composição de concreto e verde-escuro" width={1536} height={1024} loading="lazy" className="aspect-[3/2] w-full object-cover md:aspect-[2/1]" /><div className="mt-8 grid gap-8 md:grid-cols-2 md:items-end"><div><p className="font-display-tight text-3xl">Matéria em comum</p><p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">Algodão encorpado e cerâmica natural. Duas peças, a mesma presença.</p><p className="mt-4 text-sm">Camiseta Heavy Box + Vaso Forma Areia</p></div><div className="flex flex-wrap items-center gap-6 md:justify-end"><div><p className="text-xs text-muted-foreground">Conjunto de 2 peças</p><p className="mt-1 text-xl font-semibold text-highlight">{brl(SET_TOTAL)}</p></div><Button className="h-12 px-6" onClick={onBuy}>Comprar o conjunto<ShoppingBag /></Button></div></div></div></section>;
 }
 
 function BestSellers() {
-  const tabs = ["Todos", "Roupas", "Calçados", "Acessórios"] as const;
+  const tabs = ["Todos", "Vestir", "Morar"] as const;
   const [t, setT] = useState<(typeof tabs)[number]>("Todos");
   const list = [...PRODUCTS].reverse().filter((p) => t === "Todos" || p.cat === t);
   return (
@@ -291,7 +168,7 @@ function BestSellers() {
       <SectionHead title="Mais vendidos" />
       <div className="mb-6 flex gap-5 overflow-x-auto border-b border-border">
         {tabs.map((x) => (
-          <button key={x} onClick={() => setT(x)} className={`-mb-px shrink-0 border-b-2 pb-3 text-xs font-bold uppercase tracking-widest transition-colors ${t === x ? "border-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{x}</button>
+          <Button variant="ghost" key={x} onClick={() => setT(x)} className={`-mb-px shrink-0 border-b-2 pb-3 text-xs font-bold uppercase tracking-widest transition-colors ${t === x ? "border-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{x}</Button>
         ))}
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-x-4">
@@ -303,7 +180,7 @@ function BestSellers() {
 
 function Lookbook() {
   return (
-    <section className="mx-auto max-w-[1440px] px-4 pb-14 md:px-8 md:pb-24">
+    <section id="sobre" className="mx-auto max-w-[1440px] scroll-mt-24 px-4 pb-14 md:px-8 md:pb-24">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:grid-rows-2 md:gap-3">
         <img src={hero} alt="Lookbook 1" loading="lazy" className="col-span-2 row-span-2 aspect-[4/5] h-full w-full object-cover md:aspect-auto" />
         <img src={banner} alt="Lookbook 2" loading="lazy" className="col-span-2 aspect-[16/9] h-full w-full object-cover" />
@@ -311,10 +188,10 @@ function Lookbook() {
         <img src={p2} alt="Lookbook 4" loading="lazy" className="aspect-square h-full w-full object-cover" />
       </div>
       <div className="mt-10 grid gap-6 md:mt-16 md:grid-cols-2 md:gap-16">
-        <h2 className="font-display-tight text-5xl md:text-7xl">Nem só rua.<br />Nem só estúdio.<br /><span className="text-highlight">Híbrido.</span></h2>
+        <h2 className="font-display-tight text-5xl md:text-7xl">Vestir.<br />Morar.<br /><span className="text-highlight">Hybrid Co.</span></h2>
         <div className="flex flex-col justify-end gap-6">
-          <p className="text-base leading-relaxed text-muted-foreground md:text-lg">A Hybrid Co. nasceu em São Paulo, entre o skate, o rap e as noites de laje. Fazemos roupa pesada, de modelagem ampla e acabamento honesto — pra quem vive a cidade de verdade.</p>
-          <div><Btn>Conheça a marca</Btn></div>
+          <p className="text-base leading-relaxed text-muted-foreground md:text-lg">Entre o corpo e o espaço, existe um mesmo jeito de viver. Roupas de silhueta ampla, mobiliário de formas essenciais e objetos com presença. Matérias diferentes, um universo em comum.</p>
+          
         </div>
       </div>
     </section>
@@ -368,7 +245,7 @@ function Newsletter() {
   return (
     <section className="mx-auto max-w-[1440px] px-4 py-16 md:px-8 md:py-28">
       <div className="grid gap-8 md:grid-cols-2 md:items-end">
-        <h2 className="font-display-tight text-5xl md:text-7xl">Receba lançamentos e drops em primeira mão</h2>
+        <h2 className="text-3xl font-medium leading-tight md:text-4xl">Receba lançamentos e drops em primeira mão</h2>
         <form onSubmit={(e) => { e.preventDefault(); setOk(true); }} className="flex flex-col gap-3">
           {ok ? <p className="text-sm font-semibold">Pronto! Você está na lista. 🔥</p> : (
             <div className="flex border-b-2 border-foreground">
@@ -387,7 +264,7 @@ function Footer() {
   const cols = [
     { t: "Institucional", l: ["Sobre", "Contato", "Trabalhe conosco"] },
     { t: "Ajuda", l: ["Trocas e devoluções", "Frete", "Perguntas frequentes", "Guia de medidas"] },
-    { t: "Categorias", l: ["Camisetas", "Moletons", "Calças", "Bonés", "Tênis", "Acessórios"] },
+    { t: "Vestir e Morar", l: ["Camisetas", "Moletons", "Calças", "Bonés", "Calçados", "Mobiliário", "Objetos"] },
     { t: "Redes sociais", l: ["Instagram", "TikTok", "YouTube", "Spotify"] },
   ];
   return (
@@ -409,7 +286,7 @@ function Footer() {
             {["SSL Seguro", "Site Blindado"].map((x) => <span key={x} className="flex items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ShieldCheck className="size-3.5" />{x}</span>)}
           </div>
         </div>
-        <p className="font-display-tight mt-14 select-none text-[24vw] leading-[0.8] md:text-[19vw]">Hybrid Co.</p>
+        <p className="font-display-tight mt-14 select-none text-7xl leading-none md:text-9xl">Hybrid Co.</p>
         <div className="flex flex-col gap-1 border-t border-border py-6 text-[11px] text-muted-foreground md:flex-row md:justify-between">
           <p>Hybrid Co. Comércio de Vestuário Ltda. — CNPJ 00.000.000/0001-00</p>
           <p>Rua Augusta, 0000 — Consolação, São Paulo/SP</p>
