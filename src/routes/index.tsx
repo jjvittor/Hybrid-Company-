@@ -168,21 +168,76 @@ function SectionHead({ title, cta = "Ver tudo" }: { title: string; cta?: string 
 
 function Categories() {
   const cats = [
-    { n: "Camisetas", img: p1, pos: "center" }, { n: "Moletons", img: hero, pos: "50% 35%" },
-    { n: "Calças", img: hero, pos: "50% 80%" }, { n: "Bonés", img: p2, pos: "85% 60%" },
-    { n: "Tênis", img: p2, pos: "20% 55%" }, { n: "Acessórios", img: banner, pos: "40% 20%" },
+    { n: "Camisetas", img: p1, pos: "center", tag: "18 peças" },
+    { n: "Moletons", img: hero, pos: "50% 35%", tag: "Peso 400gsm" },
+    { n: "Calças", img: hero, pos: "50% 80%", tag: "Cargo & wide" },
+    { n: "Bonés", img: p2, pos: "85% 60%", tag: "6 panel" },
+    { n: "Tênis", img: p2, pos: "20% 55%", tag: "Runner" },
+    { n: "Acessórios", img: banner, pos: "40% 20%", tag: "Meias, bags" },
   ];
+  const [active, setActive] = useState(0);
+  const cur = cats[active] ?? cats[0]!;
   return (
-    <section className="mx-auto max-w-[1440px] px-4 py-14 md:px-8 md:py-24">
-      <SectionHead title="Categorias" cta="Ver todas" />
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3">
-        {cats.map((c) => (
-          <a key={c.n} href="#" className="group relative aspect-[4/5] overflow-hidden bg-card">
-            <img src={c.img} alt={c.n} loading="lazy" style={{ objectPosition: c.pos }} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent" />
-            <span className="font-display-tight absolute bottom-3 left-3 text-3xl text-primary-foreground md:bottom-5 md:left-5 md:text-5xl">{c.n}</span>
-          </a>
+    <section className="overflow-hidden border-y border-border bg-primary text-primary-foreground">
+      {/* marquee de rua */}
+      <div className="flex whitespace-nowrap border-b border-primary-foreground/15 py-3" aria-hidden>
+        {[0, 1].map((r) => (
+          <div key={r} className="animate-marquee-x flex shrink-0 items-center gap-8 pr-8">
+            {["Camisetas", "Moletons", "Calças", "Bonés", "Tênis", "Acessórios"].map((w) => (
+              <span key={w} className="font-display-tight flex items-center gap-8 text-2xl md:text-4xl">
+                {w} <span className="text-highlight">✦</span>
+              </span>
+            ))}
+          </div>
         ))}
+      </div>
+
+      <div className="mx-auto grid max-w-[1440px] md:grid-cols-2">
+        {/* palco: imagem da categoria ativa */}
+        <div className="relative order-first aspect-[4/3] overflow-hidden md:order-last md:aspect-auto md:min-h-[640px]">
+          {cats.map((c, k) => (
+            <img
+              key={c.n}
+              src={c.img}
+              alt={c.n}
+              loading="lazy"
+              style={{ objectPosition: c.pos }}
+              className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ${k === active ? "scale-100 opacity-100" : "scale-110 opacity-0"}`}
+            />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent" />
+          {/* etiqueta adesiva */}
+          <span className="absolute left-4 top-4 -rotate-6 bg-highlight px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-highlight-foreground md:left-8 md:top-8">
+            {cur.tag}
+          </span>
+          <span className="font-display-tight text-stroke-primary-fg pointer-events-none absolute -bottom-2 left-3 select-none text-[26vw] leading-none opacity-60 md:left-6 md:text-[11rem]">
+            {String(active + 1).padStart(2, "0")}
+          </span>
+        </div>
+
+        {/* lista tipográfica */}
+        <div className="flex flex-col justify-center px-4 py-10 md:px-12 md:py-20">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-highlight">Explore por categoria</p>
+          <h2 className="font-display-tight mb-8 text-5xl md:text-6xl">O que você<br />procura?</h2>
+          <ul>
+            {cats.map((c, k) => (
+              <li key={c.n} className="border-t border-primary-foreground/15 last:border-b">
+                <a
+                  href="#"
+                  onMouseEnter={() => setActive(k)}
+                  onFocus={() => setActive(k)}
+                  onClick={(e) => e.preventDefault()}
+                  className="group flex items-center justify-between gap-4 py-3 md:py-4"
+                >
+                  <span className={`font-display-tight text-4xl transition-all duration-300 md:text-6xl ${k === active ? "translate-x-2 text-highlight md:translate-x-4" : "text-stroke-primary-fg opacity-70 group-hover:opacity-100"}`}>
+                    {c.n}
+                  </span>
+                  <ArrowRight className={`size-6 shrink-0 transition-all duration-300 md:size-8 ${k === active ? "translate-x-0 text-highlight opacity-100" : "-translate-x-3 opacity-0"}`} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
   );
