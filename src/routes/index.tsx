@@ -392,7 +392,15 @@ function Footer() {
   ];
   return (
     <footer className="border-t border-border bg-secondary text-secondary-foreground">
-...
+      <div className="mx-auto max-w-[1440px] px-4 pt-14 md:px-8 md:pt-20">
+        <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
+          {cols.map((c) => (
+            <div key={c.t}>
+              <p className="mb-4 text-xs font-bold uppercase tracking-widest">{c.t}</p>
+              <ul className="space-y-2 text-sm text-muted-foreground">{c.l.map((x) => <li key={x}><a href="#" className="transition-colors hover:text-highlight">{x}</a></li>)}</ul>
+            </div>
+          ))}
+        </div>
         <div className="mt-14 flex flex-col gap-6 border-t border-border pt-8 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">
             {["Pix", "Visa", "Mastercard", "Elo", "Amex", "Boleto"].map((x) => <span key={x} className="rounded-sm border border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{x}</span>)}
