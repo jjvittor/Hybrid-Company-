@@ -179,17 +179,11 @@ function Categories() {
   const cur = cats[active] ?? cats[0]!;
   return (
     <section className="overflow-hidden border-y border-border bg-primary text-primary-foreground">
-      {/* marquee de rua */}
-      <div className="flex whitespace-nowrap border-b border-primary-foreground/15 py-3" aria-hidden>
-        {[0, 1].map((r) => (
-          <div key={r} className="animate-marquee-x flex shrink-0 items-center gap-8 pr-8">
-            {["Camisetas", "Moletons", "Calças", "Bonés", "Tênis", "Acessórios"].map((w) => (
-              <span key={w} className="font-display-tight flex items-center gap-8 text-2xl md:text-4xl">
-                {w} <span className="text-highlight">✦</span>
-              </span>
-            ))}
-          </div>
-        ))}
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between border-b border-primary-foreground/15 px-4 py-4 md:px-8">
+        <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.3em]">
+          <span className="size-1.5 rounded-full bg-highlight" /> Categorias
+        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.3em] opacity-50">06 departamentos</p>
       </div>
 
       <div className="mx-auto grid max-w-[1440px] md:grid-cols-2">
