@@ -176,7 +176,7 @@ function Categories() {
     { n: "Acessórios", img: banner, pos: "40% 20%", tag: "Meias, bags" },
   ];
   const [active, setActive] = useState(0);
-  const cur = cats[active];
+  const cur = cats[active] ?? cats[0]!;
   return (
     <section className="overflow-hidden border-y border-border bg-primary text-primary-foreground">
       {/* marquee de rua */}
