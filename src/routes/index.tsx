@@ -1,34 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { MENU, PRODUCTS, CATEGORIES, SET_PRODUCTS, SET_TOTAL, type Product, type Department } from "@/lib/hybrid-catalog";
-import scene from "@/assets/hybrid-scene.jpg";
-import setImage from "@/assets/hybrid-set.jpg";
-import {
-  Search, User, Heart, ShoppingBag, Menu, X, ArrowRight,
-  Truck, RefreshCw, ShieldCheck, MessageCircle, Instagram,
-} from "lucide-react";
-import hero from "@/assets/hybrid-scene.jpg";
-import banner from "@/assets/hybrid-set.jpg";
-import p1 from "@/assets/tee.jpg";
-import p2 from "@/assets/chair.jpg";
+import hero from "@/assets/aero-hero.jpg";
+import doors from "@/assets/aero-doors.jpg";
+import setImage from "@/assets/aero-set.jpg";
+import { Search, User, Heart, ShoppingBag, Menu, X, ArrowRight, ArrowUpRight, ArrowLeft, Truck, RefreshCw, ShieldCheck, MessageCircle, Instagram, Leaf, Plus, Minus, MoveUpRight, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Hybrid Co. — Vestir e Morar | Loja oficial" },
-      { name: "description", content: "Roupas, mobiliário e objetos no mesmo universo estético. Conheça Concreto Dourado, a coleção para vestir e morar da Hybrid Co." },
-      { property: "og:title", content: "Hybrid Co. — Vestir e Morar" },
-      { property: "og:description", content: "Streetwear, mobiliário e objetos. Um mesmo olhar para o corpo e o espaço." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Index,
+  head: () => ({ meta: [
+    { title: "Hybrid Co. — Concreto Dourado | Vestir e Morar" },
+    { name: "description", content: "Um novo jeito de vestir e morar. Conheça o streetwear, os móveis e os objetos da coleção Concreto Dourado da Hybrid Co." },
+    { property: "og:title", content: "Hybrid Co. — Um mesmo universo para vestir e morar" },
+    { property: "og:description", content: "Concreto Dourado: roupas, móveis e objetos em uma coleção híbrida." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" },
+  ] }), component: Index,
 });
-
 const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
 
 function Index() {
   const [department, setDepartment] = useState<Department | "Todos">("Todos");
@@ -36,264 +26,91 @@ function Index() {
   const [setAdded, setSetAdded] = useState(false);
   const [size, setSize] = useState("M");
   const [choosing, setChoosing] = useState(false);
+  const [utility, setUtility] = useState<"search" | "account" | "favorites" | null>(null);
+  const [search, setSearch] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Product | null>(null);
   const go = (item: string) => {
-    if (item === "Vestir" || item === "Morar" || item === "Novidades") {
-      setDepartment(item === "Novidades" ? "Todos" : item);
-      document.getElementById("novidades")?.scrollIntoView({ behavior: "smooth" });
-    } else document.getElementById(item === "Coleções" ? "colecoes" : "sobre")?.scrollIntoView({ behavior: "smooth" });
+    if (item === "Vestir" || item === "Morar" || item === "Novidades") { setDepartment(item === "Novidades" ? "Todos" : item); scrollTo("novidades"); }
+    else scrollTo(item === "Coleções" ? "colecoes" : "sobre");
   };
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Announcement />
-      <Header onNavigate={go} onCart={() => { setChoosing(false); setCartOpen(true); }} count={setAdded ? 2 : 0} />
+  const toggleFavorite = (name: string) => setFavorites(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
+  const results = PRODUCTS.filter(p => utility === "favorites" ? favorites.includes(p.name) : p.name.toLocaleLowerCase("pt-BR").includes(search.toLocaleLowerCase("pt-BR")));
+  return <div className="min-h-screen bg-background text-foreground">
+    <Announcement />
+    <Header onNavigate={go} onCart={() => { setChoosing(false); setCartOpen(true); }} count={setAdded ? 2 : 0} onUtility={setUtility} favoriteCount={favorites.length} />
+    <main>
       <Hero onNavigate={go} />
-      <Categories />
-      <ProductSection title={department === "Todos" ? "Lançamentos" : department} products={PRODUCTS.filter(p => department === "Todos" || p.cat === department)} department={department} onDepartment={setDepartment} />
+      <Doors onNavigate={go} />
+      <Categories onExplore={p => { setDepartment(p); scrollTo("novidades"); }} />
+      <ProductSection title={department === "Todos" ? "Chegou um novo universo." : department} products={PRODUCTS.filter(p => department === "Todos" || p.cat === department)} department={department} onDepartment={setDepartment} favorites={favorites} onFavorite={toggleFavorite} onProduct={setSelected} />
       <CompleteSet onBuy={() => { setChoosing(true); setCartOpen(true); }} />
-      <BestSellers />
-      <Lookbook />
+      <Manifesto />
       <Community />
       <Benefits />
       <Newsletter />
-      <Footer />
-      <Dialog open={cartOpen} onOpenChange={setCartOpen}>
-        <DialogContent className="rounded-[2px]">
-          <DialogHeader>
-            <DialogTitle>{choosing ? "Seu conjunto Concreto Dourado" : "Sua sacola"}</DialogTitle>
-            <DialogDescription>{choosing || setAdded ? "Camiseta Heavy Box + Vaso Forma Areia" : "Sua sacola está vazia."}</DialogDescription>
-          </DialogHeader>
-          {(choosing || setAdded) && <>
-            <div className="grid grid-cols-2 gap-4">{SET_PRODUCTS.map(p => <div key={p.name}><img src={p.img} alt={p.name} width={768} height={960} className="aspect-[4/5] w-full object-cover" /><p className="mt-2 text-sm">{p.name}</p><p className="mt-1 text-sm text-muted-foreground">{brl(p.price)}</p></div>)}</div>
-            <label className="flex items-center justify-between text-sm">Tamanho da camiseta<select aria-label="Tamanho da camiseta" value={size} onChange={e => setSize(e.target.value)} className="rounded-[2px] border border-input bg-background px-4 py-2">{["P", "M", "G", "GG"].map(x => <option key={x}>{x}</option>)}</select></label>
-            <p className="flex justify-between border-t border-border pt-4 text-sm font-semibold"><span>Total do conjunto</span><span>{brl(SET_TOTAL)}</span></p>
-            {choosing ? <Button onClick={() => { setSetAdded(true); setChoosing(false); }}>Adicionar conjunto à sacola <ShoppingBag /></Button> : <p role="status" className="text-sm">Conjunto na sacola · Camiseta {size}</p>}
-            <p className="text-xs text-muted-foreground">Prévia de compra. Pedidos e pagamentos ainda não estão disponíveis.</p>
-          </>}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
+    </main>
+    <Footer onNavigate={go} />
+    <Button variant="secondary" size="icon" className="fixed bottom-6 right-5 z-30 size-12 rounded-full border border-glass-border bg-leaf shadow-sm" aria-label="Atendimento no WhatsApp" onClick={() => scrollTo("atendimento")}><MessageCircle className="size-6" /></Button>
+    <Dialog open={cartOpen} onOpenChange={setCartOpen}><DialogContent className="max-h-[90svh] overflow-y-auto"><DialogHeader><DialogTitle>{choosing ? "Seu conjunto Concreto Dourado" : "Sua sacola"}</DialogTitle><DialogDescription>{choosing || setAdded ? "Camiseta Heavy Box + Vaso Forma Areia" : "Sua sacola está vazia."}</DialogDescription></DialogHeader>
+      {(choosing || setAdded) && <><div className="grid grid-cols-2 gap-4">{SET_PRODUCTS.map(p => <div key={p.name}><div className="product-stage rounded-lg p-4"><img src={p.img} alt={p.name} width={480} height={600} className="aspect-[4/5] w-full object-contain" /></div><p className="mt-2 text-sm">{p.name}</p><p className="mt-1 text-sm text-muted-foreground">{brl(p.price)}</p></div>)}</div><label className="flex items-center justify-between text-sm">Tamanho da camiseta<select aria-label="Tamanho da camiseta" value={size} onChange={e => setSize(e.target.value)} className="rounded-lg border border-input bg-background px-4 py-2">{["P", "M", "G", "GG"].map(x => <option key={x}>{x}</option>)}</select></label><p className="flex justify-between border-t border-border pt-4 font-semibold"><span>Total do conjunto</span><span>{brl(SET_TOTAL)}</span></p>{choosing ? <Button onClick={() => { setSetAdded(true); setChoosing(false); }}>Adicionar conjunto à sacola <ShoppingBag /></Button> : <p role="status" className="text-sm">Conjunto na sacola · Camiseta {size}</p>}<p className="text-xs text-muted-foreground">Prévia de compra. Pedidos e pagamentos ainda não estão disponíveis.</p></>}
+    </DialogContent></Dialog>
+    <Dialog open={utility !== null} onOpenChange={open => { if (!open) setUtility(null); }}><DialogContent className="max-h-[85svh] overflow-y-auto"><DialogHeader><DialogTitle>{utility === "search" ? "Encontre seu próximo favorito" : utility === "favorites" ? "Seus favoritos" : "Minha conta"}</DialogTitle><DialogDescription>{utility === "account" ? "O acesso à conta estará disponível quando a loja abrir." : "Vestir e Morar · Hybrid Co."}</DialogDescription></DialogHeader>{utility === "search" && <input aria-label="Buscar produtos" placeholder="Camiseta, poltrona, objeto…" value={search} onChange={e => setSearch(e.target.value)} className="h-12 rounded-full border border-input bg-background px-5 outline-none focus:ring-1 focus:ring-ring" />}{utility !== "account" && <div className="space-y-3">{results.length === 0 ? <p className="text-sm text-muted-foreground">{utility === "favorites" ? "Nenhum favorito por enquanto." : "Nenhum produto encontrado."}</p> : results.map(p => <Button key={p.name} variant="ghost" className="h-auto w-full justify-start whitespace-normal text-left" onClick={() => { setUtility(null); setSelected(p); }}><img src={p.img} alt="" className="size-16 object-contain" /><span>{p.name}<span className="mt-1 block text-muted-foreground">{brl(p.price)}</span></span><ArrowUpRight className="ml-auto" /></Button>)}</div>}</DialogContent></Dialog>
+    <Dialog open={selected !== null} onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent>{selected && <><DialogHeader><DialogTitle>{selected.name}</DialogTitle><DialogDescription>{selected.cat} / {selected.category}</DialogDescription></DialogHeader><div className="product-stage rounded-lg p-6"><img src={selected.img} alt={selected.name} width={480} height={600} className="mx-auto h-64 object-contain" /></div><p className="text-xl font-semibold">{brl(selected.price)}</p><Button variant="outline" aria-pressed={favorites.includes(selected.name)} onClick={() => toggleFavorite(selected.name)}><Heart />{favorites.includes(selected.name) ? "Remover dos favoritos" : "Salvar nos favoritos"}</Button><p className="text-xs text-muted-foreground">Prévia da coleção. Pedidos e pagamentos ainda não estão disponíveis.</p></>}</DialogContent></Dialog>
+  </div>;
 }
 
 function Announcement() {
-  const msgs = ["Frete grátis acima de R$ 399", "Parcele em até 6x sem juros", "Pix com 5% de desconto"];
-  return (
-    <div className="h-6 overflow-hidden border-b border-border bg-background text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.2em]">
-      <div className="animate-ticker">
-        {msgs.map((m) => <p key={m} className="flex h-6 items-center justify-center">{m}</p>)}
-      </div>
-    </div>
-  );
+  return <div className="absolute inset-x-0 top-0 z-50 h-6 overflow-hidden border-b border-glass-border bg-glass text-center text-[10px] text-foreground"><div className="animate-ticker">{["Pix com 5% de desconto", "Frete grátis acima de R$ 399"].map(m => <p key={m} className="flex h-6 items-center justify-center gap-2"><span className="size-1 rounded-full bg-leaf" />{m}<span className="size-1 rounded-full bg-leaf" /></p>)}</div></div>;
 }
-
-function Header({ onNavigate, onCart, count }: { onNavigate: (item: string) => void; onCart: () => void; count: number }) {
+function Header({ onNavigate, onCart, count, onUtility, favoriteCount }: { onNavigate: (item: string) => void; onCart: () => void; count: number; onUtility: (u: "search" | "account" | "favorites") => void; favoriteCount: number }) {
   const [open, setOpen] = useState(false);
-  return <>
-    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-4 md:h-20 md:px-8">
-        <Button variant="ghost" size="icon" aria-label="Abrir menu" className="lg:hidden" onClick={() => setOpen(true)}><Menu /></Button>
-        <a href="/" className="font-display-tight text-2xl md:text-3xl">Hybrid Co.</a>
-        <nav aria-label="Menu principal" className="hidden gap-7 lg:flex">{MENU.map(m => <Button variant="ghost" key={m} onClick={() => onNavigate(m)} className="px-0 text-sm hover:bg-transparent hover:text-highlight">{m}</Button>)}</nav>
-        <div className="flex items-center gap-2"><Button variant="ghost" size="icon" aria-label="Buscar" className="hidden sm:inline-flex"><Search /></Button><Button variant="ghost" size="icon" aria-label="Conta" className="hidden sm:inline-flex"><User /></Button><Button variant="ghost" size="icon" aria-label="Carrinho" className="relative" onClick={onCart}><ShoppingBag />{count > 0 && <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-highlight text-[10px] text-highlight-foreground">{count}</span>}</Button></div>
-      </div>
-    </header>
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="rounded-[2px]"><DialogHeader><DialogTitle className="font-display-tight text-3xl">Hybrid Co.</DialogTitle><DialogDescription>Vestir e Morar</DialogDescription></DialogHeader><nav className="flex flex-col items-start gap-3">{MENU.map(m => <Button key={m} variant="ghost" className="text-xl" onClick={() => { setOpen(false); onNavigate(m); }}>{m}</Button>)}</nav></DialogContent></Dialog>
-  </>;
+  return <><header className="glass-panel fixed inset-x-4 top-9 z-40 mx-auto flex h-16 max-w-[1400px] items-center justify-between rounded-full px-4 md:inset-x-8 md:h-[74px] md:px-7"><a href="/" className="font-display text-2xl font-semibold md:text-3xl">Hybrid Co<span className="text-blue">.</span></a><nav aria-label="Menu principal" className="hidden items-center gap-5 lg:flex">{MENU.map(m => <Button key={m} variant="ghost" className="rounded-full text-sm" onClick={() => onNavigate(m)}>{m}{(m === "Vestir" || m === "Morar") && <Plus className="size-3" />}</Button>)}</nav><div className="flex items-center gap-0.5 md:gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label="Buscar" title="Buscar" onClick={() => onUtility("search")}><Search /></Button><Button variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex" aria-label="Conta" title="Conta" onClick={() => onUtility("account")}><User /></Button><Button variant="ghost" size="icon" className="relative hidden rounded-full sm:inline-flex" aria-label="Favoritos" title="Favoritos" onClick={() => onUtility("favorites")}><Heart />{favoriteCount > 0 && <span className="absolute right-0 top-0 size-3 rounded-full bg-leaf text-[9px]">{favoriteCount}</span>}</Button><Button variant="ghost" size="icon" className="relative rounded-full" aria-label="Carrinho" title="Sacola" onClick={onCart}><ShoppingBag />{count > 0 && <span className="absolute right-0 top-0 grid size-4 place-items-center rounded-full bg-leaf text-[10px]">{count}</span>}</Button><Button variant="ghost" size="icon" className="rounded-full lg:hidden" aria-label="Abrir menu" onClick={() => setOpen(true)}><Menu /></Button></div></header><Dialog open={open} onOpenChange={setOpen}><DialogContent className="glass-panel"><DialogHeader><DialogTitle className="text-3xl">Hybrid Co.</DialogTitle><DialogDescription>Um universo. Muitas formas de viver.</DialogDescription></DialogHeader><nav className="flex flex-col items-start gap-2">{MENU.map(m => <Button variant="ghost" key={m} className="h-12 w-full justify-between text-xl" onClick={() => { setOpen(false); onNavigate(m); }}>{m}<ArrowUpRight /></Button>)}<Button variant="ghost" onClick={() => { setOpen(false); onUtility("favorites"); }}>Favoritos <Heart /></Button></nav></DialogContent></Dialog></>;
 }
-
-function Btn({ children, light }: { children: React.ReactNode; light?: boolean }) {
-  return <Button asChild variant={light ? "outline" : "default"} className="h-12 px-6"><a href="#colecoes">{children}<ArrowRight /></a></Button>;
+function Hero({ onNavigate }: { onNavigate: (s: string) => void }) {
+  const art = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || window.innerWidth < 768) return;
+    let frame = 0;
+    const move = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { if (art.current) art.current.style.transform = `translateY(${Math.min(window.scrollY * .045, 22)}px) scale(1.04)`; }); };
+    window.addEventListener("scroll", move, { passive: true }); return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", move); };
+  }, []);
+  return <section className="aero-hero relative overflow-hidden" aria-label="Coleção Concreto Dourado"><img ref={art} src={hero} alt="Modelo de moletom e cargo ao lado de uma poltrona e um vaso, em uma colagem de céu, água e folhas" width={1920} height={1024} fetchPriority="high" className="hero-art" /><div className="relative mx-auto h-full max-w-[1400px] px-6 md:px-8"><div className="hero-copy"><div className="mb-6 flex items-center gap-2"><span className="size-1.5 rounded-full bg-leaf" /><p className="eyebrow">Coleção 26 / Vestir + Morar</p></div><h1 className="hero-title">Concreto<br />Dourado<span className="text-blue">.</span></h1><p className="mt-6 max-w-[290px] text-base leading-relaxed text-muted-foreground">Peças pesadas para dias quentes na cidade.</p><Button className="mt-7 h-12 gap-6 px-7" onClick={() => onNavigate("Coleções")}>Ver coleção <ArrowUpRight /></Button><p className="mt-5 hidden text-[11px] text-muted-foreground md:block">Do seu corpo ao seu espaço. Tudo se conecta.</p></div><div className="hero-note"><p className="eyebrow">Um mesmo universo</p><p className="mt-1 font-display text-xl">Vestir. Morar. Viver.</p><MoveUpRight className="absolute -left-9 -top-8 size-9 text-blue" /></div><p className="absolute bottom-7 left-8 hidden text-[10px] md:block">HYBRID CO. / BRASIL / 2026</p></div></section>;
 }
-
-function Hero({ onNavigate }: { onNavigate: (item: string) => void }) {
-  return (
-    <section aria-label="Coleção Concreto Dourado" className="hybrid-hero relative overflow-hidden bg-background">
-      <div className="hero-heading relative z-10 px-4 py-8 text-center md:absolute md:inset-x-0 md:top-10 md:p-0">
-        <p className="text-xs text-muted-foreground md:text-foreground">Coleção 26 · Vestir e Morar</p>
-        <h1 className="font-display-tight mt-4 text-5xl md:text-7xl">Concreto<br className="md:hidden" /> Dourado</h1>
-        <p className="mt-4 text-sm text-muted-foreground md:text-foreground">Um mesmo olhar. Do corpo ao espaço.</p>
-      </div>
-      <img src={scene} alt="Coleção Concreto Dourado: streetwear à esquerda, poltrona e vaso à direita, na mesma cena" width={1920} height={1024} fetchPriority="high" className="hero-scene w-full object-cover md:absolute md:inset-0 md:h-full" />
-      <div className="relative z-10 mx-auto grid w-full max-w-[1440px] grid-cols-2 border-t border-border md:absolute md:inset-x-0 md:bottom-0 md:border-t-0">
-        {[{ n: "Vestir", d: "Heavy cotton. Silhueta ampla." }, { n: "Morar", d: "Formas puras. Novas matérias." }].map((x, i) => <div key={x.n} className={`flex flex-col items-start gap-2 bg-background/85 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-8 md:py-6 ${i === 0 ? "border-r border-border" : ""}`}><div><p className="font-display-tight text-2xl">{x.n}</p><p className="mt-2 hidden text-xs text-muted-foreground sm:block">{x.d}</p></div><Button variant="ghost" onClick={() => onNavigate(x.n)} className="h-9 px-0 text-xs hover:bg-transparent hover:text-highlight">Explorar {x.n.toLowerCase()}<ArrowRight /></Button></div>)}
-      </div>
-    </section>
-  );
+function Doors({ onNavigate }: { onNavigate: (s: string) => void }) {
+  return <section className="mx-auto max-w-[1400px] px-5 pb-20 pt-12 md:px-8 md:pb-28 md:pt-16"><div className="mb-9 flex flex-wrap items-end justify-between gap-3"><h2 className="text-3xl md:text-[42px]">Dois mundos. Um só olhar.</h2><p className="text-sm text-muted-foreground">Sua identidade não termina na roupa.</p></div><div className="grid gap-5 md:grid-cols-2">{[{n:"Vestir",d:"Silhuetas amplas. Presença leve.",i:"01"},{n:"Morar",d:"Objetos com alma. Espaços com você.",i:"02"}].map(x => <article key={x.n} className="door relative h-[350px] overflow-hidden rounded-lg border border-glass-border md:h-[420px]"><img src={doors} alt="Roupas e mobiliário em uma colagem de natureza e água" width={1536} height={1024} loading="lazy" className="door-image" /><div className="glass-panel absolute inset-x-4 bottom-4 flex items-center justify-between rounded-lg px-5 py-4"><div><p className="eyebrow text-muted-foreground">Universo {x.i}</p><h3 className="mt-1 text-3xl">{x.n}</h3><p className="mt-1 text-xs text-muted-foreground">{x.d}</p></div><Button variant="outline" size="icon" className="size-11 rounded-full border-glass-border bg-glass" aria-label={`Explorar ${x.n}`} onClick={() => onNavigate(x.n)}><ArrowUpRight /></Button></div></article>)}</div></section>;
 }
-
-function SectionHead({ title, cta = "Ver tudo" }: { title: string; cta?: string }) {
-  return (
-    <div className="mb-6 flex items-end justify-between gap-4 md:mb-10">
-      <h2 className="font-display-tight text-5xl md:text-7xl">{title}</h2>
-      <a href="#" className="shrink-0 border-b border-foreground pb-1 text-xs font-bold uppercase tracking-widest hover:text-highlight hover:border-highlight">{cta}</a>
-    </div>
-  );
+function Categories({ onExplore }: { onExplore: (d: Department) => void }) {
+  const [active, setActive] = useState(0); const current = CATEGORIES[active]; if (!current) return null;
+  const partner = PRODUCTS.find(p => p.cat !== current.department); 
+  return <section className="border-y border-border bg-card/50"><div className="mx-auto grid max-w-[1400px] gap-10 px-5 py-16 md:grid-cols-[.85fr_1.15fr] md:gap-20 md:px-8 md:py-24"><div><p className="eyebrow mb-4 text-blue">Explore à sua maneira</p><h2 className="mb-8 text-4xl md:text-5xl">Seu universo,<br />em cada detalhe.</h2><ul>{CATEGORIES.map((c,k) => <li key={c.n} className="border-b border-border"><Button variant="ghost" onMouseEnter={() => setActive(k)} onFocus={() => setActive(k)} onClick={() => setActive(k)} aria-pressed={active === k} className={`h-14 w-full justify-between rounded-none px-0 hover:bg-transparent ${active === k ? "text-blue" : "text-muted-foreground"}`}><span className="flex items-center gap-4"><span className="w-4 text-[10px]">0{k+1}</span><span className="font-display text-2xl">{c.n}</span></span><span className="flex items-center gap-4"><span className="text-[10px]">{c.department}</span><ArrowUpRight className={active === k ? "opacity-100" : "opacity-30"} /></span></Button></li>)}</ul></div><div className="category-stage relative min-h-[470px] overflow-hidden rounded-lg border border-glass-border md:min-h-[590px]"><div className="absolute left-5 top-5 flex items-center gap-2 text-xs"><span className="size-2 rounded-full bg-leaf" />hybrid / {current.n.toLowerCase()}<Minus className="ml-3 size-3" /><X className="size-3" /></div><img key={current.n} src={current.img} alt={current.n} width={480} height={600} loading="lazy" className="aero-cutout float-cutout absolute left-[8%] top-[13%] h-[66%] w-[67%]" />{partner && <img src={partner.img} alt={partner.name} width={480} height={600} loading="lazy" className="aero-cutout absolute bottom-[14%] right-[3%] h-[34%] w-[38%] rotate-[8deg]" />}<Leaf className="absolute right-7 top-20 size-12 -rotate-12 text-leaf/70" strokeWidth={1} /><div className="absolute inset-x-5 bottom-5 flex items-center justify-between border-t border-glass-border pt-4"><div><p className="eyebrow text-muted-foreground">{current.department} + {current.department === "Vestir" ? "Morar" : "Vestir"}</p><p className="mt-1 font-display text-xl">{current.n}</p></div><Button variant="outline" className="rounded-full bg-glass" onClick={() => onExplore(current.department)}>Explorar <ArrowUpRight /></Button></div></div></div></section>;
 }
-
-function Categories() {
-  const [active, setActive] = useState(0);
-  const current = CATEGORIES[active];
-  if (!current) return null;
-  return <section className="border-y border-border">
-    <div className="mx-auto flex max-w-[1440px] items-center justify-between border-b border-border px-4 py-5 md:px-8"><p className="text-xs text-muted-foreground">Categorias</p><p className="text-xs text-muted-foreground">Vestir / Morar</p></div>
-    <div className="mx-auto grid max-w-[1440px] md:grid-cols-2">
-      <div className="px-4 py-10 md:px-12 md:py-16"><h2 className="font-display-tight mb-8 text-4xl md:text-5xl">Seu universo</h2><ul>{CATEGORIES.map((c, k) => <li key={c.n} className="border-t border-border last:border-b"><Button variant="ghost" onMouseEnter={() => setActive(k)} onFocus={() => setActive(k)} onClick={() => setActive(k)} aria-pressed={active === k} className={`h-14 w-full justify-between rounded-none px-0 text-left hover:bg-transparent md:h-16 ${active === k ? "text-highlight" : "text-foreground"}`}><span className="text-xl font-normal md:text-2xl">{c.n}</span><span className="flex items-center gap-4"><span className="text-xs font-normal text-muted-foreground">{c.department}</span><ArrowRight className={active === k ? "opacity-100" : "opacity-0"} /></span></Button></li>)}</ul></div>
-      <div className="relative aspect-[4/5] overflow-hidden bg-card md:aspect-auto"><img src={current.img} alt={current.n} width={768} height={960} loading="lazy" className="h-full w-full object-cover" /><p className="absolute bottom-4 left-4 rounded-[2px] bg-background/85 px-3 py-2 text-xs text-foreground md:bottom-6 md:left-6">{current.department} / {current.n}</p></div>
-    </div>
-  </section>;
+function ProductCard({ p, favorite, onFavorite, onProduct }: { p: Product; favorite: boolean; onFavorite: (n:string) => void; onProduct: (p:Product) => void }) {
+  return <article className="product-card min-w-0"><div className="product-stage relative aspect-[4/5] rounded-lg border border-glass-border"><Button variant="ghost" className="absolute inset-0 h-full w-full rounded-lg p-7" aria-label={`Ver ${p.name}`} onClick={() => onProduct(p)}><img src={p.img} alt={p.name} width={480} height={600} loading="lazy" className="product-cutout aero-cutout h-full w-full" /></Button>{p.tag && <span className="absolute left-4 top-4 rounded-full border border-glass-border bg-glass px-3 py-1 text-[10px]">Novo ↗</span>}<Button variant="ghost" size="icon" aria-label={`Favoritar ${p.name}`} aria-pressed={favorite} onClick={() => onFavorite(p.name)} className="absolute right-3 top-3 rounded-full bg-glass"><Heart strokeWidth={1.5} className={favorite ? "fill-highlight text-foreground" : ""} /></Button></div><div className="mt-4 space-y-1.5"><p className="eyebrow text-muted-foreground">{p.cat} / {p.category}</p><h3 className="font-sans text-sm font-medium">{p.name}</h3><p className="pt-1 text-base font-semibold"><span className="rounded-sm bg-highlight/25 px-1.5 py-0.5">{brl(p.price)}</span></p><p className="text-xs text-muted-foreground">ou 6x de {brl(p.price / 6)} sem juros</p></div></article>;
 }
-
-function ProductCard({ p }: { p: Product }) {
-  const [favorite, setFavorite] = useState(false);
-  return <article className="group">
-    <div className="relative aspect-[4/5] overflow-hidden bg-card"><img src={p.img} alt={p.name} width={768} height={960} loading="lazy" className="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-90" />{p.tag && <span className="absolute left-3 top-3 rounded-[2px] bg-background/85 px-2 py-1 text-[11px]">{p.tag}</span>}<Button variant="ghost" size="icon" aria-label={`Favoritar ${p.name}`} aria-pressed={favorite} onClick={() => setFavorite(!favorite)} className="absolute right-2 top-2 bg-background/75"><Heart className={favorite ? "fill-highlight text-highlight" : ""} /></Button></div>
-    <div className="mt-4 space-y-1.5"><p className="text-xs text-muted-foreground">{p.cat} / {p.category}</p><h3 className="text-sm font-medium">{p.name}</h3><p className="text-sm font-semibold text-highlight">{brl(p.price)}</p><p className="text-xs text-muted-foreground">ou 6x de {brl(p.price / 6)} sem juros</p></div>
-  </article>;
+function ProductSection({ title, products, department, onDepartment, favorites, onFavorite, onProduct }: { title:string; products:Product[]; department:Department|"Todos"; onDepartment:(d:Department|"Todos")=>void; favorites:string[]; onFavorite:(n:string)=>void; onProduct:(p:Product)=>void }) {
+  const track=useRef<HTMLDivElement>(null);
+  return <section id="novidades" className="mx-auto max-w-[1400px] px-5 py-20 md:px-8 md:py-28"><p className="eyebrow mb-3 text-blue">Novidades / Concreto Dourado</p><div className="mb-8 flex flex-wrap items-end justify-between gap-5"><h2 className="max-w-xl text-4xl md:text-5xl">{title}</h2><div className="flex items-center gap-5"><div className="flex gap-3">{(["Todos","Vestir","Morar"] as const).map(d => <Button key={d} variant="ghost" className={`rounded-full px-4 ${department===d ? "bg-sky/60 text-foreground" : "text-muted-foreground"}`} aria-pressed={department===d} onClick={() => onDepartment(d)}>{d}</Button>)}</div><div className="hidden gap-2 md:flex"><Button size="icon" variant="outline" className="rounded-full" aria-label="Lançamentos anteriores" onClick={() => track.current?.scrollBy({left:-650,behavior:"smooth"})}><ArrowLeft /></Button><Button size="icon" variant="outline" className="rounded-full" aria-label="Próximos lançamentos" onClick={() => track.current?.scrollBy({left:650,behavior:"smooth"})}><ArrowRight /></Button></div></div></div><div ref={track} className="product-track">{products.map(p => <ProductCard key={p.name} p={p} favorite={favorites.includes(p.name)} onFavorite={onFavorite} onProduct={onProduct} />)}</div></section>;
 }
-
-function ProductSection({ title, products, department, onDepartment }: { title: string; products: Product[]; department: Department | "Todos"; onDepartment: (d: Department | "Todos") => void }) {
-  return <section id="novidades" className="mx-auto max-w-[1440px] scroll-mt-24 px-4 py-16 md:px-8 md:py-24"><div className="mb-8 flex flex-wrap items-end justify-between gap-6"><h2 className="font-display-tight text-5xl md:text-6xl">{title}</h2><div className="flex gap-5">{(["Todos", "Vestir", "Morar"] as const).map(d => <Button key={d} variant="ghost" onClick={() => onDepartment(d)} aria-pressed={department === d} className={`rounded-none border-b px-0 hover:bg-transparent ${department === d ? "border-highlight text-highlight" : "border-transparent text-muted-foreground"}`}>{d}</Button>)}</div></div><div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-x-4 md:gap-y-10">{products.map(p => <ProductCard key={p.name} p={p} />)}</div></section>;
+function CompleteSet({ onBuy }: { onBuy:()=>void }) {
+  return <section id="colecoes" className="relative overflow-hidden bg-sky/40"><div className="mx-auto max-w-[1400px] px-5 py-16 md:px-8 md:py-24"><div className="mb-9 flex flex-wrap items-end justify-between gap-5"><div><p className="eyebrow mb-4 text-blue">Conexões / Seleção híbrida 01</p><h2 className="text-4xl md:text-5xl">Complete o look,<br />complete o espaço.</h2></div><p className="max-w-[290px] text-sm leading-relaxed text-muted-foreground">Algodão encorpado e cerâmica natural.<br />Duas peças, a mesma presença.</p></div><div className="relative"><img src={setImage} alt="Camiseta off-white e vaso em uma colagem com poltrona, céu, água e folhas" width={1536} height={1024} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover md:aspect-[2/1]" /><span className="absolute left-[7%] top-[16%] hidden -rotate-6 rounded-lg border border-glass-border bg-background px-4 py-2 text-xs md:block">Camiseta Heavy Box · {brl(189)} ↘</span><span className="absolute right-[5%] top-[34%] hidden rotate-6 rounded-lg border border-glass-border bg-background px-4 py-2 text-xs md:block">↙ Vaso Forma Areia · {brl(249)}</span></div><div className="mt-7 flex flex-wrap items-center justify-between gap-6"><div><p className="text-sm">Camiseta Heavy Box + Vaso Forma Areia</p><p className="mt-1 text-xs text-muted-foreground">Um mesmo olhar. Do corpo ao espaço.</p></div><div className="flex flex-wrap items-center gap-6"><div><p className="text-[10px] text-muted-foreground">Conjunto de 2 peças</p><p className="text-2xl font-semibold">{brl(SET_TOTAL)}</p></div><Button className="h-12 px-6" onClick={onBuy}>Comprar o conjunto <ShoppingBag /></Button></div></div></div></section>;
 }
-
-function CompleteSet({ onBuy }: { onBuy: () => void }) {
-  return <section id="colecoes" className="scroll-mt-24 border-y border-border bg-secondary"><div className="mx-auto max-w-[1440px] px-4 py-14 md:px-8 md:py-20"><div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><h2 className="max-w-xl text-3xl font-medium leading-tight md:text-4xl">Complete o look,<br />complete o espaço</h2><p className="text-sm text-muted-foreground">Concreto Dourado · Seleção híbrida 01</p></div><img src={setImage} alt="Camiseta off-white e vaso de cerâmica em uma composição de concreto e verde-escuro" width={1536} height={1024} loading="lazy" className="aspect-[3/2] w-full object-cover md:aspect-[2/1]" /><div className="mt-8 grid gap-8 md:grid-cols-2 md:items-end"><div><p className="font-display-tight text-3xl">Matéria em comum</p><p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">Algodão encorpado e cerâmica natural. Duas peças, a mesma presença.</p><p className="mt-4 text-sm">Camiseta Heavy Box + Vaso Forma Areia</p></div><div className="flex flex-wrap items-center gap-6 md:justify-end"><div><p className="text-xs text-muted-foreground">Conjunto de 2 peças</p><p className="mt-1 text-xl font-semibold text-highlight">{brl(SET_TOTAL)}</p></div><Button className="h-12 px-6" onClick={onBuy}>Comprar o conjunto<ShoppingBag /></Button></div></div></div></section>;
+function Manifesto() {
+  return <section id="sobre" className="relative overflow-hidden"><div className="mx-auto grid max-w-[1400px] items-center gap-10 px-5 py-20 md:grid-cols-2 md:px-8 md:py-28"><div className="relative h-[390px] md:h-[470px]"><div className="retro-window absolute left-3 top-10 w-[72%] -rotate-6"><WindowBar>hybrid / mundo.em.comum</WindowBar><img src={doors} alt="Roupa e mobiliário compartilham a mesma paisagem" width={1536} height={1024} loading="lazy" className="aspect-square w-full rounded-b-lg object-cover" /></div><img src={PRODUCTS[0]?.img} alt="Camiseta Heavy Box" width={480} height={600} loading="lazy" className="aero-cutout absolute right-0 top-0 h-[60%] w-[45%] rotate-12" /><img src={PRODUCTS[3]?.img} alt="Vaso Forma Areia" width={480} height={600} loading="lazy" className="aero-cutout absolute bottom-0 right-0 h-[45%] w-[35%] -rotate-6" /><Leaf className="absolute bottom-0 left-0 size-20 rotate-12 text-leaf" strokeWidth={1} /></div><div className="md:pl-8"><p className="eyebrow mb-5 text-blue">Manifesto Hybrid Co.</p><h2 className="text-4xl leading-tight md:text-5xl">Não é só o que<br />você veste.<br />É como você vive.</h2><p className="mt-7 max-w-md text-base leading-relaxed text-muted-foreground">Entre o corpo e o espaço, existe um mesmo jeito de viver. Roupas de silhueta ampla, mobiliário de formas essenciais e objetos com presença.</p><p className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground">Matérias diferentes. Um universo em comum.<br />Bem-vindo à Hybrid Co.</p><div className="mt-8 flex items-center gap-3 border-t border-border pt-5 text-xs"><Leaf className="size-4 text-leaf" />Criada no Brasil. Feita para o seu mundo.</div></div></div></section>;
 }
-
-function BestSellers() {
-  const tabs = ["Todos", "Vestir", "Morar"] as const;
-  const [t, setT] = useState<(typeof tabs)[number]>("Todos");
-  const list = [...PRODUCTS].reverse().filter((p) => t === "Todos" || p.cat === t);
-  return (
-    <section className="mx-auto max-w-[1440px] px-4 py-14 md:px-8 md:py-24">
-      <SectionHead title="Mais vendidos" />
-      <div className="mb-6 flex gap-5 overflow-x-auto border-b border-border">
-        {tabs.map((x) => (
-          <Button variant="ghost" key={x} onClick={() => setT(x)} className={`-mb-px shrink-0 border-b-2 pb-3 text-xs font-bold uppercase tracking-widest transition-colors ${t === x ? "border-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{x}</Button>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-4 md:gap-x-4">
-        {list.slice(0, 4).map((p) => <ProductCard key={p.name} p={p} />)}
-      </div>
-    </section>
-  );
-}
-
-function Lookbook() {
-  return (
-    <section id="sobre" className="mx-auto max-w-[1440px] scroll-mt-24 px-4 pb-14 md:px-8 md:pb-24">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:grid-rows-2 md:gap-3">
-        <img src={hero} alt="Lookbook 1" loading="lazy" className="col-span-2 row-span-2 aspect-[4/5] h-full w-full object-cover md:aspect-auto" />
-        <img src={banner} alt="Lookbook 2" loading="lazy" className="col-span-2 aspect-[16/9] h-full w-full object-cover" />
-        <img src={p1} alt="Lookbook 3" loading="lazy" className="aspect-square h-full w-full object-cover" />
-        <img src={p2} alt="Lookbook 4" loading="lazy" className="aspect-square h-full w-full object-cover" />
-      </div>
-      <div className="mt-10 grid gap-6 md:mt-16 md:grid-cols-2 md:gap-16">
-        <h2 className="font-display-tight text-5xl md:text-7xl">Vestir.<br />Morar.<br /><span className="text-highlight">Hybrid Co.</span></h2>
-        <div className="flex flex-col justify-end gap-6">
-          <p className="text-base leading-relaxed text-muted-foreground md:text-lg">Entre o corpo e o espaço, existe um mesmo jeito de viver. Roupas de silhueta ampla, mobiliário de formas essenciais e objetos com presença. Matérias diferentes, um universo em comum.</p>
-          
-        </div>
-      </div>
-    </section>
-  );
-}
-
+function WindowBar({ children }: { children:ReactNode }) { return <div className="retro-bar flex h-8 items-center justify-between rounded-t-lg px-3 text-[9px]"><span className="truncate">{children}</span><span className="flex gap-2"><Minus className="size-3" /><Plus className="size-3" /><X className="size-3" /></span></div>; }
 function Community() {
-  const imgs = [hero, p1, banner, p2, banner, hero];
-  return (
-    <section className="border-t border-border py-14 md:py-24">
-      <div className="mx-auto max-w-[1440px] px-4 md:px-8">
-        <SectionHead title="Comunidade" cta="@hybridco" />
-        <p className="-mt-3 mb-6 text-sm text-muted-foreground md:-mt-6 md:mb-10">Marque <strong className="text-foreground">@hybridco</strong> para aparecer aqui.</p>
-        <div className="grid grid-cols-3 gap-1 md:grid-cols-6">
-          {imgs.map((s, k) => (
-            <a key={k} href="https://instagram.com" target="_blank" rel="noreferrer" className="group relative aspect-square overflow-hidden">
-              <img src={s} alt={`Post da comunidade ${k + 1}`} loading="lazy" style={{ objectPosition: `${20 + k * 12}% 40%` }} className="h-full w-full object-cover" />
-              <div className="absolute inset-0 grid place-items-center bg-background/60 opacity-0 transition-opacity group-hover:opacity-100"><Instagram className="size-6 text-foreground" /></div>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+  return <section className="border-t border-border"><div className="mx-auto max-w-[1400px] px-5 py-16 md:px-8 md:py-24"><div className="mb-10 flex flex-wrap items-end justify-between gap-5"><div><p className="eyebrow mb-3 text-blue">Gente real. Conexões reais.</p><h2 className="text-4xl md:text-5xl">Nosso universo é coletivo.</h2></div><a className="flex items-center gap-2 text-sm" href="https://www.instagram.com/hybridco/" target="_blank" rel="noreferrer">@hybridco <ArrowUpRight className="size-4" /></a></div><div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">{[hero,setImage,doors,hero].map((s,k) => <a href="https://www.instagram.com/hybridco/" target="_blank" rel="noreferrer" key={k} className={`retro-window ${k%2===0 ? "-rotate-2" : "rotate-2 md:translate-y-5"}`}><WindowBar>hybrid.community / 0{k+1}</WindowBar><img src={s} alt={`Editorial Hybrid Co. ${k+1}`} width={768} height={768} loading="lazy" className={`aspect-square w-full rounded-b-lg object-cover ${k===3 ? "object-right" : "object-center"}`} /><Instagram className="absolute bottom-3 right-3 size-4 text-background" /></a>)}</div></div></section>;
 }
-
 function Benefits() {
-  const b = [
-    { i: Truck, t: "Frete para todo o Brasil", d: "Grátis acima de R$ 399" },
-    { i: RefreshCw, t: "Troca fácil", d: "Primeira troca grátis em 30 dias" },
-    { i: ShieldCheck, t: "Pagamento seguro", d: "Pix, cartão e boleto" },
-    { i: MessageCircle, t: "Atendimento via WhatsApp", d: "Seg. a sex., 9h às 18h" },
-  ];
-  return (
-    <section className="border-y border-border">
-      <div className="mx-auto grid max-w-[1440px] grid-cols-2 md:grid-cols-4">
-        {b.map(({ i: I, t, d }, k) => (
-          <div key={t} className={`flex flex-col gap-3 p-6 md:p-10 ${k % 2 === 0 ? "border-r" : ""} ${k < 2 ? "border-b md:border-b-0" : ""} md:border-r border-border last:border-r-0`}>
-            <I className="size-6" strokeWidth={1.5} />
-            <p className="text-sm font-bold uppercase tracking-wide">{t}</p>
-            <p className="text-xs text-muted-foreground">{d}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+  return <section id="atendimento" className="border-y border-border"><div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-x-6 gap-y-8 px-5 py-10 md:grid-cols-4 md:px-8 md:py-14">{[{i:Truck,t:"Todo o Brasil",d:"Frete grátis acima de R$ 399"},{i:RefreshCw,t:"Troca fácil",d:"Um novo jeito de escolher"},{i:ShieldCheck,t:"Pagamento seguro",d:"Pix, cartão e boleto"},{i:MessageCircle,t:"Vamos conversar?",d:"WhatsApp em breve"}].map(({i:I,t,d}) => <div key={t} className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4"><div className="grid size-12 shrink-0 place-items-center rounded-full border border-glass-border bg-sky/35"><I className="size-5" strokeWidth={1.5} /></div><div><p className="text-sm font-semibold">{t}</p><p className="mt-1 text-xs text-muted-foreground">{d}</p></div></div>)}</div></section>;
 }
-
 function Newsletter() {
-  const [ok, setOk] = useState(false);
-  return (
-    <section className="mx-auto max-w-[1440px] px-4 py-16 md:px-8 md:py-28">
-      <div className="grid gap-8 md:grid-cols-2 md:items-end">
-        <h2 className="text-3xl font-medium leading-tight md:text-4xl">Receba lançamentos e drops em primeira mão</h2>
-        <form onSubmit={(e) => { e.preventDefault(); setOk(true); }} className="flex flex-col gap-3">
-          {ok ? <p className="text-sm font-semibold">Pronto! Você está na lista. 🔥</p> : (
-            <div className="flex border-b-2 border-foreground">
-              <input type="email" required placeholder="Seu melhor e-mail" className="min-w-0 flex-1 bg-transparent py-4 text-base outline-none placeholder:text-muted-foreground" />
-              <button className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-highlight">Assinar <ArrowRight className="size-4" /></button>
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">Sem spam. Só drop.</p>
-        </form>
-      </div>
-    </section>
-  );
+  const [ok,setOk]=useState(false);
+  return <section className="newsletter-band"><div className="mx-auto grid max-w-[1400px] items-center gap-8 px-5 py-16 md:grid-cols-2 md:px-8 md:py-20"><div><p className="eyebrow mb-3 text-blue">Na sua caixa de entrada</p><h2 className="max-w-md text-4xl md:text-5xl">Receba lançamentos primeiro.</h2><p className="mt-4 text-sm text-muted-foreground">Novas formas de vestir e morar. Sem ruído.</p></div><form onSubmit={e=>{e.preventDefault();setOk(true);}} className="glass-panel rounded-lg p-6 md:p-8">{ok ? <p role="status" className="text-sm">E-mail recebido nesta prévia. O cadastro definitivo estará disponível na abertura da loja.</p> : <><label htmlFor="newsletter-email" className="mb-3 block text-sm font-medium">Seu e-mail, nosso próximo encontro.</label><div className="flex flex-col gap-3 sm:flex-row"><input id="newsletter-email" type="email" required placeholder="Seu melhor e-mail" className="h-12 min-w-0 flex-1 rounded-full border border-glass-border bg-background/65 px-5 text-sm outline-none focus:ring-1 focus:ring-ring" /><Button type="submit" className="h-12 gap-4 px-6">Quero receber <ArrowUpRight /></Button></div><p className="mt-3 text-[10px] text-muted-foreground">Só o que importa. Só Hybrid Co.</p></>}</form></div></section>;
 }
-
-function Footer() {
-  const cols = [
-    { t: "Institucional", l: ["Sobre", "Contato", "Trabalhe conosco"] },
-    { t: "Ajuda", l: ["Trocas e devoluções", "Frete", "Perguntas frequentes", "Guia de medidas"] },
-    { t: "Vestir e Morar", l: ["Camisetas", "Moletons", "Calças", "Bonés", "Calçados", "Mobiliário", "Objetos"] },
-    { t: "Redes sociais", l: ["Instagram", "TikTok", "YouTube", "Spotify"] },
-  ];
-  return (
-    <footer className="border-t border-border bg-secondary text-secondary-foreground">
-      <div className="mx-auto max-w-[1440px] px-4 pt-14 md:px-8 md:pt-20">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
-          {cols.map((c) => (
-            <div key={c.t}>
-              <p className="mb-4 text-xs font-bold uppercase tracking-widest">{c.t}</p>
-              <ul className="space-y-2 text-sm text-muted-foreground">{c.l.map((x) => <li key={x}><a href="#" className="transition-colors hover:text-highlight">{x}</a></li>)}</ul>
-            </div>
-          ))}
-        </div>
-        <div className="mt-14 flex flex-col gap-6 border-t border-border pt-8 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {["Pix", "Visa", "Mastercard", "Elo", "Amex", "Boleto"].map((x) => <span key={x} className="rounded-sm border border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{x}</span>)}
-          </div>
-          <div className="flex gap-2">
-            {["SSL Seguro", "Site Blindado"].map((x) => <span key={x} className="flex items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ShieldCheck className="size-3.5" />{x}</span>)}
-          </div>
-        </div>
-        <p className="font-display-tight mt-14 select-none text-7xl leading-none md:text-9xl">Hybrid Co.</p>
-        <div className="flex flex-col gap-1 border-t border-border py-6 text-[11px] text-muted-foreground md:flex-row md:justify-between">
-          <p>Hybrid Co. Comércio de Vestuário Ltda. — CNPJ 00.000.000/0001-00</p>
-          <p>Rua Augusta, 0000 — Consolação, São Paulo/SP</p>
-          <p>© 2026 Hybrid Co. Todos os direitos reservados.</p>
-        </div>
-      </div>
-    </footer>
-  );
+function Footer({onNavigate}:{onNavigate:(s:string)=>void}) {
+  const [info,setInfo]=useState<string|null>(null);
+  const cols=[{t:"Institucional",l:["Sobre","Contato"]},{t:"Ajuda",l:["Trocas e devoluções","Frete","Perguntas frequentes","Guia de medidas"]},{t:"Categorias",l:["Vestir","Morar","Coleções","Novidades"]},{t:"Redes",l:["Instagram","TikTok"]}];
+  return <footer className="bg-footer text-background"><div className="mx-auto max-w-[1400px] px-5 pb-7 pt-14 md:px-8 md:pt-20"><div className="grid gap-10 md:grid-cols-[1.5fr_2fr]"><div><p className="font-display text-4xl font-semibold">Hybrid Co.</p><p className="mt-4 max-w-xs text-sm leading-relaxed text-footer-muted">Um mesmo universo.<br />Para vestir, morar e viver.</p><Leaf className="mt-7 size-6 text-leaf" strokeWidth={1} /></div><div className="grid grid-cols-2 gap-8 sm:grid-cols-4">{cols.map(c=><div key={c.t}><p className="mb-5 text-xs font-semibold">{c.t}</p><ul className="space-y-3">{c.l.map(x=><li key={x}>{x==="Instagram" ? <a href="https://www.instagram.com/hybridco/" target="_blank" rel="noreferrer" className="text-xs text-footer-muted hover:text-background">Instagram ↗</a> : <Button variant="ghost" className="h-auto justify-start whitespace-normal p-0 text-left text-xs font-normal text-footer-muted hover:bg-transparent hover:text-background" onClick={()=>MENU.some(m=>m===x) ? onNavigate(x) : setInfo(x)}>{x}</Button>}</li>)}</ul></div>)}</div></div><div className="mt-12 flex flex-wrap items-center justify-between gap-5 border-t border-background/15 py-7"><div className="flex flex-wrap items-center gap-4 text-[10px] text-footer-muted">{["Pix","Visa","Mastercard","Elo","Boleto"].map(x=><span key={x}>{x}</span>)}</div><p className="flex items-center gap-2 text-[10px] text-footer-muted"><ShieldCheck className="size-3" />Seus dados merecem cuidado.</p></div><div className="flex flex-col justify-between gap-3 border-t border-background/15 pt-6 text-[10px] text-footer-muted md:flex-row"><p>© 2026 Hybrid Co. · Todos os direitos reservados.</p><p>CNPJ e endereço: em atualização.</p><p>Feito no Brasil, para o seu mundo.</p></div></div><Dialog open={info!==null} onOpenChange={open=>{if(!open)setInfo(null);}}><DialogContent><DialogHeader><DialogTitle>{info}</DialogTitle><DialogDescription>{info==="Contato" ? "Os canais oficiais de atendimento serão divulgados na abertura da loja." : "As informações oficiais estarão disponíveis na abertura da loja."}</DialogDescription></DialogHeader></DialogContent></Dialog></footer>;
 }
-
