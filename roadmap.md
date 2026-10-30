@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Reformular home com Vestir/Morar, campanha compartilhada, categorias e conjunto coordenado
-- [ ] Padronizar fotos e simplificar tipografia/efeitos
-- [ ] Verificar categorias, conjunto e apresentação em celular/desktop
+- [ ] Refazer a home em Frutiger Aero moderno com colagens, mantendo catálogo e navegação
+- [ ] Aplicar paleta luminosa, Outfit/Figtree, vidro moderado e imagens provisórias coordenadas
+- [ ] Verificar categorias, filtros, conjunto e apresentação em celular/desktop
 
 - [x] Home da Hybrid Co. (12 seções, mobile-first)
 - [x] Seção de Categorias inovadora (lista tipográfica + palco de imagem)

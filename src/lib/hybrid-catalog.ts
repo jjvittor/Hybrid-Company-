@@ -1,11 +1,11 @@
-import tee from "@/assets/tee.jpg";
-import hoodie from "@/assets/hoodie.jpg";
-import cargo from "@/assets/cargo.jpg";
-import sneaker from "@/assets/sneaker.jpg";
-import chair from "@/assets/chair.jpg";
-import vase from "@/assets/vase.jpg";
-import cap from "@/assets/cap.jpg";
-import table from "@/assets/table.jpg";
+import tee from "@/assets/cutouts/tee.png";
+import hoodie from "@/assets/cutouts/hoodie.png";
+import cargo from "@/assets/cutouts/cargo.png";
+import sneaker from "@/assets/cutouts/sneaker.png";
+import chair from "@/assets/cutouts/chair.png";
+import vase from "@/assets/cutouts/vase.png";
+import cap from "@/assets/cutouts/cap.png";
+import table from "@/assets/cutouts/table.png";
 
 export const MENU = ["Novidades", "Vestir", "Morar", "Coleções", "Sobre"] as const;
 export type Department = "Vestir" | "Morar";

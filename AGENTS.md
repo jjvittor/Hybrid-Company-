@@ -11,3 +11,6 @@
 
 - Keep the hybrid catalog and department/category groupings in a browser-safe data module, so home navigation, category previews and curated sets share one source.
 - Bundle selection is a frontend-only preview until commerce is connected; never imply that a payment or order has been processed.
+
+- Keep home-specific Aero treatments in global semantic CSS tokens and shared Button variants; generated campaign images and catalog cutouts stay separate so real product images can replace them without changing catalog logic.
+- Keep utility dialogs and collection selection client-only previews until services are connected; newsletter and account UI must not claim persisted registration.
