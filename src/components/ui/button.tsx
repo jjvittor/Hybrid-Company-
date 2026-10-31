@@ -11,6 +11,7 @@ const buttonVariants = cva(
       variant: {
         default: "glossy-button text-primary-foreground",
         glossy: "glossy-button text-primary-foreground",
+        chrome: "chrome-button text-foreground border border-glass-border",
         destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",

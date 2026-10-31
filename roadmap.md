@@ -1,8 +1,8 @@
 # Roadmap
 
-- [ ] Refazer a home em Frutiger Aero moderno com colagens, mantendo catálogo e navegação
-- [ ] Aplicar paleta luminosa, Outfit/Figtree, vidro moderado e imagens provisórias coordenadas
-- [ ] Verificar categorias, filtros, conjunto e apresentação em celular/desktop
+- [ ] Refazer a home Retro-Future Aero com duas campanhas, faixa de looks, hotspots e editoriais
+- [ ] Aplicar prateado/cromado, Unbounded/Figtree/JetBrains Mono e imagens provisórias coordenadas
+- [ ] Verificar mega menus, busca, sacola, newsletter e apresentação em celular/desktop
 
 - [x] Home da Hybrid Co. (12 seções, mobile-first)
 - [x] Seção de Categorias inovadora (lista tipográfica + palco de imagem)
