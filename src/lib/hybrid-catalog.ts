@@ -7,7 +7,7 @@ import vase from "@/assets/cutouts/vase.png";
 import cap from "@/assets/cutouts/cap.png";
 import table from "@/assets/cutouts/table.png";
 
-export const MENU = ["Novidades", "Vestir", "Morar", "Coleções", "Sobre"] as const;
+export const MENU = ["Comprar tudo (48)", "Coleções", "Agenda"] as const;
 export type Department = "Vestir" | "Morar";
 export type Product = { name: string; price: number; img: string; cat: Department; category: string; tag?: "Novo" };
 export const PRODUCTS: Product[] = [
@@ -28,6 +28,7 @@ export const CATEGORIES = [
   { n: "Calçados", img: sneaker, department: "Vestir" },
   { n: "Mobiliário", img: chair, department: "Morar" },
   { n: "Objetos", img: vase, department: "Morar" },
+  { n: "Iluminação", img: table, department: "Morar" },
 ] as const;
 export const SET_PRODUCTS = PRODUCTS.filter(p => p.category === "Camisetas" || p.category === "Objetos");
 export const SET_TOTAL = SET_PRODUCTS.reduce((total, p) => total + p.price, 0);
