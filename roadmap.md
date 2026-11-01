@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Ajustes pontuais da home: subtítulo, campanhas, ordem das seções, parcelamento e carrossel sem barra
+- [x] Ajustes pontuais da home: subtítulo, campanhas, ordem das seções, parcelamento e carrossel sem barra
 
 - [ ] Refazer a home Retro-Future Aero com duas campanhas, faixa de looks, hotspots e editoriais
 - [ ] Aplicar prateado/cromado, Unbounded/Figtree/JetBrains Mono e imagens provisórias coordenadas

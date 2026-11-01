@@ -15,3 +15,4 @@
 - Keep home-specific Aero treatments in global semantic CSS tokens and shared Button variants; generated campaign images and catalog cutouts stay separate so real product images can replace them without changing catalog logic.
 - Keep utility dialogs and collection selection client-only previews until services are connected; newsletter and account UI must not claim persisted registration.
 - Keep home campaign, look-strip and hotspot content separate from catalog product data; hotspot positions use named CSS classes so replacement media does not alter commerce logic.
+- Keep showcase installment arithmetic in the browser-safe utilities module, so displayed amounts can be tested without changing cart logic.
