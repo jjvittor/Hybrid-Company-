@@ -111,14 +111,17 @@
 .hotspot-vase { left: 81%; top: 48%; }
 .hotspot-popover { position: absolute; left: 46px; top: 0; width: 245px; padding: 14px; z-index: 5; }
 .hotspot-vase .hotspot-popover { left: auto; right: 46px; }
-.product-track { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 48px)/4); gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--chrome-low) transparent; padding-bottom: 16px; }
+.product-track { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 48px)/4); gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 16px; }
+.product-track::-webkit-scrollbar, .benefits-strip > div::-webkit-scrollbar { display: none; }
+.benefits-strip > div { scrollbar-width: none; }
+.hero-subtitle { max-width: 580px; text-wrap: balance; }
 .product-card { min-width: 0; scroll-snap-align: start; }
 .product-stage { position: relative; background: var(--card); aspect-ratio: 4/5; border: 1px solid var(--chrome-low); overflow: hidden; }
 .product-cutout,.product-context { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .25s ease; }
 .product-cutout { padding: 28px; object-fit: contain; }
 .product-context { object-fit: cover; opacity: 0; }
 .product-card:hover .product-context, .product-card:focus-within .product-context { opacity: 1; }
-.product-card:hover .product-cutout, .product-card:focus-within .product-cutout { opacity: 0; }
+.product-card:has(.product-context):hover .product-cutout, .product-card:has(.product-context):focus-within .product-cutout { opacity: 0; }
 .editorial-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
 .editorial-image { width: 100%; aspect-ratio: 4/5; object-fit: cover; }
 .footer-brand { font-size: 70px; }
@@ -127,7 +130,9 @@
 @media (max-width: 767px) {
  .site-width { width: calc(100% - 32px); }
  .wordmark { font-size: 27px; }
- .hero-horizon { height: 124px; }
+ .hero-horizon { height: auto; min-height: 154px; }
+ .hero-horizon > .site-width { min-height: 154px; padding-block: 16px; }
+ .hero-subtitle { max-width: 290px; }
  .hero-brand { font-size: 34px; }
  .hero-cross { font-size: 30px; }
  .campaign-grid { grid-template-columns: 1fr; gap: 20px; }
