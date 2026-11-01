@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Ajustes até 768px: campanhas deslizantes, vitrine em duas colunas, editoriais alinhados e barra no detalhe do produto
+
 - [x] Ajustes pontuais da home: subtítulo, campanhas, ordem das seções, parcelamento e carrossel sem barra
 
 - [ ] Refazer a home Retro-Future Aero com duas campanhas, faixa de looks, hotspots e editoriais
