@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Atualizar marca para YBRD e paleta solicitada, preservando layout e imagens
+- [x] Atualizar marca para YBRD e paleta solicitada, preservando layout e imagens
 
 - [x] Ajustes até 768px: campanhas deslizantes, vitrine em duas colunas, editoriais alinhados e barra no detalhe do produto
 
