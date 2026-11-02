@@ -7,8 +7,8 @@ import p2 from '@/assets/p2.jpg';
 import scene from '@/assets/hybrid-scene.jpg';
 import set from '@/assets/hybrid-set.jpg';
 export const CAMPAIGNS = [
-  { image: campaign, title: 'Concreto Dourado', label: 'Drop 01', code: 'H.CO / CD—001', department: 'Todos' },
-  { image: home, title: 'Hybrid Home', label: 'Objetos e mobiliário', code: 'H.CO / HH—002', department: 'Morar' },
+  { image: campaign, title: 'Concreto Dourado', label: 'Drop 01', code: 'YBRD / CD—001', department: 'Todos' },
+  { image: home, title: 'YBRD HOME', label: 'Objetos e mobiliário', code: 'YBRD / HH—002', department: 'Morar' },
 ] as const;
 export const LOOKS = [campaign, home, look, studio, p1, p2, scene, set];
 export const SCENE = look;
