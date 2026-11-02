@@ -78,8 +78,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Hybrid Co. — Streetwear brasileiro" },
-      { name: "description", content: "Streetwear brasileiro: roupas, calçados e acessórios Hybrid Co." },
+      { title: "YBRD — Streetwear brasileiro" },
+      { name: "description", content: "Streetwear brasileiro: roupas, calçados e acessórios YBRD" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
           ],
