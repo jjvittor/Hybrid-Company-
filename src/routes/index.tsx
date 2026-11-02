@@ -20,9 +20,9 @@ export const Route = createFileRoute('/')({
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const edition = (name: string) => {
   let h = 7;
-  for (const ch of name) h = (h * 33 + ch.charCodeAt(0) * 17 + ch.charCodeAt(0) ** 2) % 7919;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0) * 17 + ch.charCodeAt(0) ** 2) % 7919;
   const total = 20 + (h % 81);
-  const n = 1 + ((h >> 3) % total);
+  const n = 1 + (h % total);
   return `ED. ${String(n).padStart(3, '0')} / ${String(total).padStart(3, '0')}`;
 };
 const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
