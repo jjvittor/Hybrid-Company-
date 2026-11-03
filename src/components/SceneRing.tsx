@@ -4,7 +4,7 @@ const COUNT = 8;
 const STEP = 360 / COUNT;
 const CODES = Array.from({ length: COUNT }, (_, i) => `YBRD / ED_${String(i + 1).padStart(3, '0')}`);
 
-export function RingCard({ code, image }: { code: string; image?: string }) {
+export function RingCard({ code, image }: { code: string; image?: string | undefined }) {
   return (
     <article className="ring-card">
       <div className="window-bar">
