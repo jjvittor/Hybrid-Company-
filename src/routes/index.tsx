@@ -44,7 +44,6 @@ function Index() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [info, setInfo] = useState<string | null>(null);
   const [campaign, setCampaign] = useState<number | null>(null);
-  const [activeHotspot, setActiveHotspot] = useState<number | null>(null);
   const [department, setDepartment] = useState<Department | 'Todos'>('Todos');
   const [category, setCategory] = useState<string | null>(null);
   const [current, setCurrent] = useState(1);
@@ -53,7 +52,7 @@ function Index() {
   const track = useRef<HTMLDivElement>(null);
   useEffect(() => { const timer = window.setInterval(() => setNoticeIndex(i => (i + 1) % 2), 6500); return () => window.clearInterval(timer); }, []);
   const explore = (d: Department | 'Todos', c: string | null = null) => { setDepartment(d); setCategory(c); setCurrent(1); setMega(null); setDrawer(false); requestAnimationFrame(() => { if (track.current) track.current.scrollLeft = 0; scrollTo('comprar'); }); };
-  const openProduct = (p: Product) => { setSelected(p); setSize('M'); setActiveHotspot(null); };
+  const openProduct = (p: Product) => { setSelected(p); setSize('M'); };
   const visible = PRODUCTS.filter(p => (department === 'Todos' || p.cat === department) && (!category || p.category === category));
   const searchResults = PRODUCTS.filter(p => p.name.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR')));
   const moveTrack = (direction: number) => { const el = track.current; if (!el) return; el.scrollBy({ left: direction * (el.clientWidth / (window.innerWidth < 768 ? 1.4 : 4) + 16), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); };
