@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { CATEGORIES, PRODUCTS, MENU, type Product, type Department } from '@/lib/hybrid-catalog';
-import { CAMPAIGNS, LOOKS, SCENE, EDITORIALS, HOTSPOTS } from '@/lib/hybrid-editorial';
+import { CAMPAIGNS, LOOKS, EDITORIALS } from '@/lib/hybrid-editorial';
+import { SceneRing } from '@/components/SceneRing';
 import { installmentAmount } from '@/lib/utils';
 import { Search, User, ShoppingBag, Menu, X, Plus, ArrowUpRight, ArrowUp, ArrowLeft, ArrowRight, MessageCircle, Check, ChevronDown, Truck, CreditCard, RefreshCw, BadgePercent } from 'lucide-react';
 
