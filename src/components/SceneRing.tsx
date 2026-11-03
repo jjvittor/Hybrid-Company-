@@ -116,6 +116,7 @@ export function SceneRing() {
         if (!card) return;
         const diff = Math.abs(((i * STEP + rotation) % 360 + 540) % 360 - 180);
         const t = Math.min(diff / 180, 1);
+        card.style.visibility = diff > 92 ? 'hidden' : 'visible';
         card.style.opacity = String(1 - 0.55 * t);
         card.style.transform = `rotateY(${i * STEP}deg) translateZ(var(--ring-radius)) scale(${1 - 0.18 * t})`;
       });
