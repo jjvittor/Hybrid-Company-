@@ -16,4 +16,4 @@
 - Keep utility dialogs and collection selection client-only previews until services are connected; newsletter and account UI must not claim persisted registration.
 - Keep home campaign, look-strip and hotspot content separate from catalog product data; hotspot positions use named CSS classes so replacement media does not alter commerce logic.
 - Keep showcase installment arithmetic in the browser-safe utilities module, so displayed amounts can be tested without changing cart logic.
-- Keep scene-ring motion arithmetic in a browser-safe module, so scroll, drag and snap rules can be tested independently of rendering.
+- Keep scene-strip curvature and navigation arithmetic in a browser-safe module, so drag, bounds and depth rules can be tested independently of rendering.

@@ -192,28 +192,49 @@ a:hover { color: var(--signal); }
  .product-purchase-bar .purchase-price { display: block; min-width: 0; }
  .product-purchase-bar > button { flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; }
 }
-#look { height: 350vh; padding-bottom: 80px; }
-.ring-sticky { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding-top: 120px; padding-bottom: 80px; }
-.ring-scene { perspective: 1800px; flex: 1; min-height: 0; display: grid; place-items: center; overflow: visible; cursor: grab; touch-action: pan-y; outline-offset: 4px; }
+#look { width: 100%; overflow: hidden; }
+.scene-curve { --curve-height: min(62vh, 520px); --curve-width: calc(var(--curve-height) * 3 / 4); --curve-step: calc(var(--curve-width) * 0.94 + 8px); }
+.scene-curve > .section-label { width: min(100% - 64px, 1600px); margin-inline: auto; }
+.ring-scene { perspective: 1600px; transform-style: preserve-3d; height: calc(var(--curve-height) + 48px); position: relative; cursor: grab; touch-action: pan-y; }
 .ring-scene:active { cursor: grabbing; }
-.ring-scene:focus-visible { outline: 2px solid var(--signal); }
-.ring-tilt { transform-style: preserve-3d; }
-.ring { position: relative; width: min(34vw, 380px); aspect-ratio: 1; transform-style: preserve-3d; }
-.ring-card-slot { position: absolute; inset: 0; transform-style: preserve-3d; backface-visibility: hidden; will-change: transform, opacity, filter; }
+.ring-scene:focus-visible { outline: 1px solid var(--ink); outline-offset: -4px; }
+.curve-track { position: absolute; top: 24px; left: calc(50% - var(--curve-width) / 2); width: var(--curve-width); height: var(--curve-height); transform-style: preserve-3d; transition: transform 900ms cubic-bezier(0.76, 0, 0.24, 1); }
+.curve-slot { position: absolute; inset: 0; backface-visibility: hidden; transition: transform 900ms cubic-bezier(0.76, 0, 0.24, 1), opacity 900ms cubic-bezier(0.76, 0, 0.24, 1); }
+.curve-card-button { display: block; width: 100%; height: 100%; border-radius: 0; padding: 0; white-space: normal; text-align: initial; background: transparent; }
+.curve-card-button:hover { background: transparent; color: var(--ink); }
+.curve-entry { width: 100%; height: 100%; opacity: 0; }
+.scene-entered .curve-entry { animation: curve-appear 600ms both; }
 .ring-card, .ring-card * { backface-visibility: hidden; }
-.ring-card { display: flex; flex-direction: column; width: 100%; height: 100%; background: var(--cream); border: 1px solid var(--concrete); }
-.ring-card-stage { position: relative; flex: 1; display: grid; place-items: center; background: color-mix(in srgb, var(--cream) 92%, var(--ink)); }
+.ring-card { display: flex; flex-direction: column; width: 100%; height: 100%; aspect-ratio: 3 / 4; background: var(--cream); border: 1px solid var(--concrete); }
+.ring-card .window-bar { flex-shrink: 0; }
+.ring-card .micro { font-size: 11px; }
+.ring-card-stage { position: relative; flex: 1; display: grid; place-items: center; background: var(--cream); }
 .ring-card-plus { color: var(--concrete); font-family: var(--font-mono); font-size: 18px; line-height: 1; }
 .ring-card-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.ring-flat { display: grid; grid-auto-flow: column; grid-auto-columns: min(34vw, 380px); gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.curve-controls { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+.curve-arrow { border: 1px solid var(--ink); border-radius: 50%; width: 32px; height: 32px; color: var(--ink); }
+.curve-caption { position: relative; height: 36px; margin-top: 16px; overflow: hidden; text-align: center; }
+.curve-caption > div { position: absolute; inset: 0; }
+.curve-caption span { display: block; line-height: 18px; }
+.caption-out span { animation: caption-exit 400ms both; }
+.caption-in span { animation: caption-enter 400ms both; }
+.ring-flat { display: flex; gap: 8px; height: var(--curve-height); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-inline: calc((100% - var(--curve-width)) / 2); position: relative; top: 24px; }
 .ring-flat::-webkit-scrollbar { display: none; }
-.ring-flat .ring-card { scroll-snap-align: start; aspect-ratio: 1; }
-@media (max-width: 767px) {
-  .ring-scene { perspective: 1200px; }
- .ring { width: 62vw; }
- .ring-flat { grid-auto-columns: 62vw; }
+.ring-flat-item { flex: 0 0 var(--curve-width); scroll-snap-align: center; }
+@keyframes curve-appear { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes caption-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes caption-exit { to { opacity: 0; transform: translateY(-100%); } }
+@keyframes caption-enter { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 768px) {
+ .scene-curve { --curve-width: 70vw; --curve-height: calc(70vw * 4 / 3); }
+ .scene-curve > .section-label { width: calc(100% - 32px); align-items: flex-start; }
+ .scene-curve .section-label > span { flex-shrink: 0; max-width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) {
- #look { height: auto; }
+ .curve-entry { opacity: 1; }
+ .ring-scene { perspective: none; transform-style: flat; }
+ .caption-out { display: none; }
  *,*::before,*::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+@media (prefers-reduced-motion: reduce) { .curve-caption .caption-in span { animation: caption-fade 180ms both !important; } }
