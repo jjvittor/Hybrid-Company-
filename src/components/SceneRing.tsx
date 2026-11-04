@@ -93,7 +93,7 @@ export function SceneRing() {
       }
       drag.current = null;
     }} onPointerCancel={() => { drag.current = null; suppressClick.current = true; }}>
-      {flat ? <div ref={flatRef} className="ring-flat">{CODES.map((code, i) => <div className="ring-flat-item" key={code} data-index={i}><Card code={code} image={undefined} /></div>)}</div> : <div className="curve-track" style={{ transform: `translateX(calc(${ -front } * var(--curve-step)))` }}>{CODES.map((code, i) => {
+      {flat ? <div ref={flatRef} className="ring-flat">{CODES.map((code, i) => <div className="ring-flat-item" key={code} data-index={i}><Card code={code} image={undefined} /></div>)}</div> : <div className="curve-track" style={{ transform: `translateX(calc(${ -front } * var(--curve-step)))`, transitionDuration: `${SLIDE_DURATION}ms` }}>{CODES.map((code, i) => {
         const depth = curveCard(i - front, mobile);
         return <div key={code} className="curve-slot" style={{ transform: `translateX(calc(${i} * var(--curve-step))) rotateY(${depth.angle}deg) scale(${depth.scale})`, opacity: depth.opacity, zIndex: RING_COUNT - Math.abs(i - front) }}><Button variant="ghost" className="curve-card-button" aria-label={`Centralizar cena ${String(i + 1).padStart(2, '0')}`} aria-pressed={front === i} tabIndex={Math.abs(i - front) <= 1 ? 0 : -1} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } select(i); }}><div className="curve-entry" style={{ animationDelay: `${i * 70}ms` }}><Card code={code} image={undefined} /></div></Button></div>;
       })}</div>}
