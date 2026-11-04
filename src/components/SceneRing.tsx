@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RING_COUNT, clampCard, curveCard, dragCard } from '@/lib/scene-ring-motion';
+import { RING_COUNT, SLIDE_DURATION, clampCard, curveCard, dragCard } from '@/lib/scene-ring-motion';
 
 const CODES = Array.from({ length: RING_COUNT }, (_, i) => `YBRD / ED_${String(i + 1).padStart(3, '0')}`);
 
