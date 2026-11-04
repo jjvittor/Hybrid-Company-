@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { RING_COUNT as COUNT, RING_STEP as STEP, ROTATION_LERP, DRAG_SENSITIVITY, DRAG_FRICTION, SNAP_DELAY, SNAP_DURATION, scrollRotation, nearestCard, snapRotation, cardDepth } from '@/lib/scene-ring-motion';
 
-const COUNT = 8;
-const STEP = 360 / COUNT;
 const CODES = Array.from({ length: COUNT }, (_, i) => `YBRD / ED_${String(i + 1).padStart(3, '0')}`);
 
 export function RingCard({ code, image }: { code: string; image?: string | undefined }) {
@@ -22,6 +21,7 @@ export function SceneRing() {
   const sceneRef = useRef<HTMLDivElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [front, setFront] = useState(0);
   const [flat, setFlat] = useState(false);
@@ -39,19 +39,23 @@ export function SceneRing() {
     const scene = sceneRef.current;
     const tilt = tiltRef.current;
     const ring = ringRef.current;
-    if (!scene || !tilt || !ring) return;
+    const section = scene?.closest('section');
+    const sticky = stickyRef.current;
+    if (!scene || !tilt || !ring || !section || !sticky) return;
 
     let rotation = 0;
     let velocity = 0;
-    let target: number | null = null;
+    let target = 0;
+    let snap: { from: number; to: number; start: number } | null = null;
+    let lastInteraction = performance.now();
+    let settled = false;
     let dragging = false;
     let lastX = 0;
-    let idle = 0;
     let tiltX = 0;
     let tiltY = 0;
     let tiltXT = 0;
     let tiltYT = 0;
-    const fine = window.matchMedia('(pointer: fine)').matches;
+    const fine = window.matchMedia('(pointer: fine) and (min-width: 769px)').matches;
 
     const setRadius = () => {
       const card = cardRefs.current[0];
@@ -61,24 +65,37 @@ export function SceneRing() {
     const ro = new ResizeObserver(setRadius);
     if (cardRefs.current[0]) ro.observe(cardRefs.current[0]);
 
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); velocity += e.deltaY * 0.06; target = null; idle = 0; };
-    scene.addEventListener('wheel', onWheel, { passive: false });
+    const onScroll = () => {
+      const range = section.offsetHeight - sticky.offsetHeight;
+      target = scrollRotation(range > 0 ? -section.getBoundingClientRect().top / range : 0);
+      velocity = 0;
+      snap = null;
+      settled = false;
+      lastInteraction = performance.now();
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
 
-    const onDown = (e: PointerEvent) => { dragging = true; lastX = e.clientX; velocity = 0; target = null; scene.setPointerCapture(e.pointerId); };
+    const onDown = (e: PointerEvent) => {
+      if (!e.isPrimary || e.button !== 0) return;
+      dragging = true; lastX = e.clientX; velocity = 0; target = rotation; snap = null; settled = false;
+      scene.setPointerCapture(e.pointerId);
+    };
     const onMove = (e: PointerEvent) => {
       if (dragging) {
         const dx = e.clientX - lastX;
         lastX = e.clientX;
-        rotation += dx * 0.3;
-        velocity = dx * 0.3;
-        idle = 0;
+        target += dx * DRAG_SENSITIVITY;
+        velocity = dx * DRAG_SENSITIVITY;
+        lastInteraction = performance.now();
       } else if (fine) {
         const r = scene.getBoundingClientRect();
-        tiltYT = ((e.clientX - r.left) / r.width - 0.5) * 12;
-        tiltXT = -((e.clientY - r.top) / r.height - 0.5) * 8;
+        tiltYT = Math.max(-3, Math.min(3, ((e.clientX - r.left) / r.width - 0.5) * 6));
+        tiltXT = Math.max(-2, Math.min(2, -((e.clientY - r.top) / r.height - 0.5) * 4));
       }
     };
-    const onUp = () => { dragging = false; };
+    const onUp = () => { dragging = false; lastInteraction = performance.now(); };
     const onLeave = () => { tiltXT = 0; tiltYT = 0; };
     scene.addEventListener('pointerdown', onDown);
     scene.addEventListener('pointermove', onMove);
@@ -87,38 +104,34 @@ export function SceneRing() {
     scene.addEventListener('pointerleave', onLeave);
 
     let raf = 0;
-    const tick = () => {
+    const tick = (now: number) => {
       if (!dragging) {
-        if (target !== null) {
-          rotation += (target - rotation) * 0.14;
-          if (Math.abs(target - rotation) < 0.05) { rotation = target; target = null; }
-        } else {
-          rotation += velocity;
-          velocity *= 0.94;
-          if (Math.abs(velocity) < 0.05) {
-            idle += 1;
-            if (idle > 8) {
-              const snap = Math.round(rotation / STEP) * STEP;
-              rotation += (snap - rotation) * 0.14;
-              if (Math.abs(snap - rotation) < 0.05) rotation = snap;
-            }
-          } else {
-            idle = 0;
-          }
+        if (Math.abs(velocity) >= 0.01) {
+          target += velocity;
+          velocity *= DRAG_FRICTION;
+        } else velocity = 0;
+        if (!snap && !settled && velocity === 0 && now - lastInteraction >= SNAP_DELAY) {
+          snap = { from: target, to: nearestCard(target), start: now };
+        }
+        if (snap) {
+          target = snapRotation(snap.from, snap.to, now - snap.start);
+          if (now - snap.start >= SNAP_DURATION) { snap = null; settled = true; }
         }
       }
-      tiltX += (tiltXT - tiltX) * 0.08;
-      tiltY += (tiltYT - tiltY) * 0.08;
-      tilt.style.transform = `rotateX(${-8 + tiltX}deg) rotateY(${tiltY}deg)`;
+      rotation += (target - rotation) * ROTATION_LERP;
+      tiltX += (tiltXT - tiltX) * 0.05;
+      tiltY += (tiltYT - tiltY) * 0.05;
+      tilt.style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
       ring.style.transform = `rotateY(${rotation}deg)`;
       const frontIndex = ((Math.round(-rotation / STEP) % COUNT) + COUNT) % COUNT;
       cardRefs.current.forEach((card, i) => {
         if (!card) return;
-        const diff = Math.abs(((i * STEP + rotation) % 360 + 540) % 360 - 180);
-        const t = Math.min(diff / 180, 1);
-        card.style.visibility = diff > 92 ? 'hidden' : 'visible';
-        card.style.opacity = String(1 - 0.55 * t);
-        card.style.transform = `rotateY(${i * STEP}deg) translateZ(var(--ring-radius)) scale(${1 - 0.18 * t})`;
+        const depth = cardDepth(i * STEP + rotation);
+        card.style.visibility = depth.hidden ? 'hidden' : 'visible';
+        card.style.pointerEvents = depth.hidden ? 'none' : 'auto';
+        card.style.opacity = String(depth.opacity);
+        card.style.filter = `blur(${depth.blur}px)`;
+        card.style.transform = `rotateY(${i * STEP}deg) translateZ(var(--ring-radius)) scale(${depth.scale})`;
       });
       setFront(prev => (prev === frontIndex ? prev : frontIndex));
       raf = requestAnimationFrame(tick);
@@ -128,9 +141,11 @@ export function SceneRing() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
         e.preventDefault();
-        const base = target ?? Math.round(rotation / STEP) * STEP;
-        target = base + (e.key === 'ArrowRight' ? -STEP : STEP);
+        target = nearestCard(target) + (e.key === 'ArrowRight' ? -STEP : STEP);
         velocity = 0;
+        snap = null;
+        settled = false;
+        lastInteraction = performance.now();
       }
     };
     scene.addEventListener('keydown', onKey);
@@ -138,7 +153,8 @@ export function SceneRing() {
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
-      scene.removeEventListener('wheel', onWheel);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
       scene.removeEventListener('pointerdown', onDown);
       scene.removeEventListener('pointermove', onMove);
       scene.removeEventListener('pointerup', onUp);
@@ -149,7 +165,7 @@ export function SceneRing() {
   }, [flat]);
 
   return (
-    <>
+    <div ref={stickyRef} className={flat ? 'ring-accessible' : 'ring-sticky'}>
       <div className="section-label">
         <h2 className="section-title">Um look. Um espaço.</h2>
         <span className="micro text-muted-foreground">[ Shop the scene / 08 ] {String(front + 1).padStart(2, '0')}—08</span>
@@ -174,6 +190,6 @@ export function SceneRing() {
           <p className="micro mt-6 text-center text-muted-foreground" aria-live="polite">{CODES[front]}</p>
         </>
       )}
-    </>
+    </div>
   );
 }
