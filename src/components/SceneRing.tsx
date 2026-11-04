@@ -49,10 +49,12 @@ export function SceneRing() {
   useEffect(() => {
     const track = flatRef.current;
     if (!flat || !track) return;
+    const active = track.children[front];
+    if (active instanceof HTMLElement) track.scrollLeft = active.offsetLeft - track.offsetLeft - (track.clientWidth - active.clientWidth) / 2;
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.intersectionRatio > 0.8 && entry.target instanceof HTMLElement) {
-          const index = Number(entry.target.dataset.index);
+          const index = Number(entry.target.dataset['index']);
           setFront(current => { if (current !== index) setPrevious(current); return index; });
         }
       });

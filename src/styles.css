@@ -222,6 +222,7 @@ a:hover { color: var(--signal); }
 .ring-flat::-webkit-scrollbar { display: none; }
 .ring-flat-item { flex: 0 0 var(--curve-width); scroll-snap-align: center; }
 @keyframes curve-appear { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes caption-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes caption-exit { to { opacity: 0; transform: translateY(-100%); } }
 @keyframes caption-enter { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 768px) {
@@ -235,3 +236,5 @@ a:hover { color: var(--signal); }
  .caption-out { display: none; }
  *,*::before,*::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+@media (prefers-reduced-motion: reduce) { .curve-caption .caption-in span { animation: caption-fade 180ms both !important; } }
