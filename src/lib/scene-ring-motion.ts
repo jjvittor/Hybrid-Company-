@@ -1,6 +1,7 @@
 export const RING_COUNT = 8;
 export const SLIDE_DURATION = 900;
-export const clampCard = (index: number) => Math.max(0, Math.min(RING_COUNT - 1, Math.round(index)));
+export const clampCard = (index: number) => ((Math.round(index) % RING_COUNT) + RING_COUNT) % RING_COUNT;
+export const circularDistance = (index: number, active: number) => clampCard(index - active + RING_COUNT / 2) - RING_COUNT / 2;
 export const dragCard = (start: number, pixels: number, width: number) => clampCard(start - pixels / Math.max(width * 0.8, 1));
 export const curveCard = (distance: number, mobile: boolean) => ({
   angle: -Math.sign(distance) * Math.min(Math.abs(distance) * 22, mobile ? 35 : 55),
