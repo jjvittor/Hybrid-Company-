@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RING_COUNT, SLIDE_DURATION, clampCard, curveCard, dragCard } from '@/lib/scene-ring-motion';
+import { RING_COUNT, SLIDE_DURATION, clampCard, circularDistance, curveCard, dragCard } from '@/lib/scene-ring-motion';
 
 const CODES = Array.from({ length: RING_COUNT }, (_, i) => `YBRD / ED_${String(i + 1).padStart(3, '0')}`);
 
@@ -14,7 +14,8 @@ export function SceneRing() {
   const flatRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; start: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
-  const [front, setFront] = useState(0);
+  const [position, setPosition] = useState(0);
+  const front = clampCard(position);
   const [previous, setPrevious] = useState<number | null>(null);
   const [flat, setFlat] = useState(false);
   const [mobile, setMobile] = useState(false);
@@ -55,7 +56,7 @@ export function SceneRing() {
       entries.forEach(entry => {
         if (entry.intersectionRatio > 0.8 && entry.target instanceof HTMLElement) {
           const index = Number(entry.target.dataset['index']);
-          setFront(current => { if (current !== index) setPrevious(current); return index; });
+          setPosition(current => { const active = clampCard(current); if (active !== index) setPrevious(active); return current + circularDistance(index, active); });
         }
       });
     }, { root: track, threshold: 0.8 });
@@ -65,7 +66,7 @@ export function SceneRing() {
 
   const select = (index: number) => {
     const next = clampCard(index);
-    if (next !== front) { setPrevious(front); setFront(next); }
+    if (next !== front) { setPrevious(front); setPosition(current => current + circularDistance(next, clampCard(current))); }
     if (flat) {
       const track = flatRef.current;
       const card = track?.children[next];
@@ -95,12 +96,15 @@ export function SceneRing() {
       }
       drag.current = null;
     }} onPointerCancel={() => { drag.current = null; suppressClick.current = true; }}>
-      {flat ? <div ref={flatRef} className="ring-flat">{CODES.map((code, i) => <div className="ring-flat-item" key={code} data-index={i}><Card code={code} image={undefined} /></div>)}</div> : <div className="curve-track" style={{ transform: `translateX(calc(${ -front } * var(--curve-step)))`, transitionDuration: `${SLIDE_DURATION}ms` }}>{CODES.map((code, i) => {
-        const depth = curveCard(i - front, mobile);
-        return <div key={code} className="curve-slot" style={{ transform: `translateX(calc(${i} * var(--curve-step))) rotateY(${depth.angle}deg) scale(${depth.scale})`, opacity: depth.opacity, zIndex: RING_COUNT - Math.abs(i - front) }}><Button variant="ghost" className="curve-card-button" aria-label={`Centralizar cena ${String(i + 1).padStart(2, '0')}`} aria-pressed={front === i} tabIndex={Math.abs(i - front) <= 1 ? 0 : -1} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } select(i); }}><div className="curve-entry" style={{ animationDelay: `${i * 70}ms` }}><Card code={code} image={undefined} /></div></Button></div>;
-      })}</div>}
+      {flat ? <div ref={flatRef} className="ring-flat">{CODES.map((code, i) => <div className="ring-flat-item" key={code} data-index={i}><Card code={code} image={undefined} /></div>)}</div> : <div className="curve-track">{CODES.flatMap((code, i) => [-1, 0, 1].map(copy => {
+        const distance = circularDistance(i, front) + copy * RING_COUNT;
+        const depth = curveCard(distance, mobile);
+        // Stable physical keys let offscreen copies enter/exit without recycling across the strip.
+        const physicalIndex = position + distance;
+        return <div key={physicalIndex} className="curve-slot" aria-hidden={copy !== 0 ? true : undefined} style={{ transform: `translateX(calc(${distance} * var(--curve-step))) rotateY(${depth.angle}deg) scale(${depth.scale})`, transitionDuration: `${SLIDE_DURATION}ms`, opacity: depth.opacity, zIndex: RING_COUNT - Math.min(RING_COUNT, Math.abs(distance)) }}><Button variant="ghost" className="curve-card-button" aria-label={`Centralizar cena ${String(i + 1).padStart(2, '0')}`} aria-pressed={front === i} tabIndex={Math.abs(distance) <= 1 ? 0 : -1} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } select(i); }}><div className="curve-entry" style={{ animationDelay: `${i * 70}ms` }}><Card code={code} image={undefined} /></div></Button></div>;
+      }))}</div>}
     </div>
-    <div className="curve-controls"><Button variant="ghost" size="icon" className="curve-arrow" aria-label="Cena anterior" disabled={front === 0} onClick={() => select(front - 1)}><ArrowLeft /></Button><Button variant="ghost" size="icon" className="curve-arrow" aria-label="Próxima cena" disabled={front === RING_COUNT - 1} onClick={() => select(front + 1)}><ArrowRight /></Button></div>
+    <div className="curve-controls"><Button variant="ghost" size="icon" className="curve-arrow" aria-label="Cena anterior" onClick={() => select(front - 1)}><ArrowLeft /></Button><Button variant="ghost" size="icon" className="curve-arrow" aria-label="Próxima cena" onClick={() => select(front + 1)}><ArrowRight /></Button></div>
     <div className="curve-caption micro text-muted-foreground" aria-live="polite" aria-atomic="true">{previous !== null && <div key={`out-${previous}`} className="caption-out" aria-hidden="true">{CODES[previous]?.split(' / ').map((line, i) => <span key={line} style={{ animationDelay: `${i * 60}ms` }}>{line}</span>)}</div>}<div key={front} className={previous !== null ? 'caption-in' : ''}>{CODES[front]?.split(' / ').map((line, i) => <span key={line} style={{ animationDelay: `${i * 60}ms` }}>{line}</span>)}</div></div>
   </div>;
 }
