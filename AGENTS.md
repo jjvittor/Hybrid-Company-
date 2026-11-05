@@ -17,3 +17,4 @@
 - Keep home campaign, look-strip and hotspot content separate from catalog product data; hotspot positions use named CSS classes so replacement media does not alter commerce logic.
 - Keep showcase installment arithmetic in the browser-safe utilities module, so displayed amounts can be tested without changing cart logic.
 - Keep scene-strip curvature and circular navigation arithmetic in a browser-safe module; use stable physical copies offscreen so modulo-eight navigation never animates a recycled card across the strip.
+- Keep mobile-only home presentation behind the existing narrow-screen breakpoint; page-scroll chat visibility uses the shared browser-safe predicate so its threshold is testable independently of rendering.
