@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Aplicar e verificar as dez correções mobile do arquivo enviado, preservando imagens e desktop.
+
 - [x] Atualizar marca para YBRD e paleta solicitada, preservando layout e imagens
 
 - [x] Ajustes até 768px: campanhas deslizantes, vitrine em duas colunas, editoriais alinhados e barra no detalhe do produto
