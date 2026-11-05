@@ -251,7 +251,7 @@ a:hover { color: var(--signal); }
  .header-row > div:last-child { flex-shrink: 0; }
  .floating-chat { display: none; width: 44px; height: 44px; right: 16px; bottom: 88px; z-index: 30; }
  .floating-chat.chat-visible { display: inline-flex; }
- .horizon-grid-clip { bottom: auto; height: 100px; overflow: hidden; }
+ .horizon-grid-clip { bottom: auto; height: 88px; overflow: hidden; }
  .horizon-grid { opacity: 0.25; }
  .hero-subtitle { margin-top: 12px; }
  .look-track { scrollbar-width: none; scroll-snap-type: x mandatory; }
@@ -270,6 +270,8 @@ a:hover { color: var(--signal); }
  .section-label { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
  .section-label > * { min-width: 0; overflow-wrap: anywhere; }
  .section-label > :last-child { max-width: 160px; }
+ #editoriais > .section-label, section[aria-label="Looks da coleção"] > .section-label { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+ #editoriais > .section-label > :last-child, section[aria-label="Looks da coleção"] > .section-label > :last-child { max-width: none; }
  .curve-caption { height: 40px; }
  .curve-caption span { line-height: 20px; }
  .window-bar .micro { white-space: nowrap; }

@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Aplicar e verificar as dez correções mobile do arquivo enviado, preservando imagens e desktop.
+- [x] Aplicar e verificar as dez correções mobile do arquivo enviado, preservando imagens e desktop.
 
 - [x] Atualizar marca para YBRD e paleta solicitada, preservando layout e imagens
 
