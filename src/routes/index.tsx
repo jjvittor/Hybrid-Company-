@@ -56,12 +56,15 @@ function Index() {
   const [lookProgress, setLookProgress] = useState(0);
   useEffect(() => {
     const narrow = window.matchMedia('(max-width: 768px)');
-    const updateChat = () => setChatVisible(showMobileChat(window.scrollY));
+    const updateChat = () => {
+      setChatVisible(showMobileChat(window.scrollY));
+      document.documentElement.style.setProperty('--announcement-scroll', `${window.scrollY}px`);
+    };
     const updateMobile = () => setMobile(narrow.matches);
     updateChat(); updateMobile();
     window.addEventListener('scroll', updateChat, { passive: true });
     narrow.addEventListener('change', updateMobile);
-    return () => { window.removeEventListener('scroll', updateChat); narrow.removeEventListener('change', updateMobile); };
+    return () => { window.removeEventListener('scroll', updateChat); narrow.removeEventListener('change', updateMobile); document.documentElement.style.removeProperty('--announcement-scroll'); };
   }, []);
   useEffect(() => {
     const el = looksTrack.current;
