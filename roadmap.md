@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Criar e verificar contas, confirmação de e-mail, recuperação de senha, perfil privado e acesso pelo cabeçalho.
+
 - [x] Aplicar e verificar as dez correções mobile do arquivo enviado, preservando imagens e desktop.
 
 - [x] Atualizar marca para YBRD e paleta solicitada, preservando layout e imagens
