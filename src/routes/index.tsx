@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { CATEGORIES, PRODUCTS, MENU, type Product, type Department } from '@/lib/hybrid-catalog';
-import { CAMPAIGNS, LOOKS, EDITORIALS } from '@/lib/hybrid-editorial';
+import { CAMPAIGNS, EDITORIALS } from '@/lib/hybrid-editorial';
 import { SceneRing } from '@/components/SceneRing';
+import { LookArchive } from '@/components/LookArchive';
 import { installmentAmount, showMobileChat } from '@/lib/utils';
 import { Search, User, ShoppingBag, Menu, X, Plus, ArrowUpRight, ArrowUp, ArrowLeft, ArrowRight, MessageCircle, Check, ChevronDown } from 'lucide-react';
 
@@ -50,10 +51,8 @@ function Index() {
   const [emailOk, setEmailOk] = useState(false);
   const [dropOk, setDropOk] = useState(false);
   const track = useRef<HTMLDivElement>(null);
-  const looksTrack = useRef<HTMLDivElement>(null);
   const [chatVisible, setChatVisible] = useState(false);
   const [mobile, setMobile] = useState(false);
-  const [lookProgress, setLookProgress] = useState(0);
   useEffect(() => {
     const narrow = window.matchMedia('(max-width: 768px)');
     const updateChat = () => {
@@ -65,15 +64,6 @@ function Index() {
     window.addEventListener('scroll', updateChat, { passive: true });
     narrow.addEventListener('change', updateMobile);
     return () => { window.removeEventListener('scroll', updateChat); narrow.removeEventListener('change', updateMobile); document.documentElement.style.removeProperty('--announcement-scroll'); };
-  }, []);
-  useEffect(() => {
-    const el = looksTrack.current;
-    if (!el) return;
-    const sync = () => setLookProgress((el.scrollLeft + el.clientWidth) / Math.max(el.scrollWidth, 1));
-    sync();
-    const observer = new ResizeObserver(sync);
-    observer.observe(el);
-    return () => observer.disconnect();
   }, []);
   useEffect(() => { const timer = window.setInterval(() => setNoticeIndex(i => (i + 1) % 2), 6500); return () => window.clearInterval(timer); }, []);
   const explore = (d: Department | 'Todos', c: string | null = null) => { setDepartment(d); setCategory(c); setCurrent(1); setMega(null); setDrawer(false); requestAnimationFrame(() => { if (track.current) track.current.scrollLeft = 0; scrollTo('comprar'); }); };
@@ -119,7 +109,7 @@ const footerColumns: { title: string; links: { l: string; go?: () => void }[] }[
       </section>
       <section id="comprar" className="site-width pb-16"><div className="section-label"><div><p className="micro mb-2 text-muted-foreground">Drop 01 / Seleção híbrida</p><h2 className="section-title">Comprar Concreto Dourado</h2></div><span className="micro">{String(current).padStart(2, '0')} / {String(visible.length).padStart(2, '0')}</span></div><div className="department-tabs mb-5 flex flex-wrap items-center gap-3">{(['Todos', 'Vestir', 'Morar'] as const).map(d => <Button key={d} variant="ghost" className={`micro h-7 rounded-none border-b px-0 ${department === d ? 'border-foreground' : 'border-transparent text-muted-foreground'}`} aria-pressed={department === d} onClick={() => explore(d)}>{d}</Button>)}{category && <Button variant="chrome" className="micro h-7" onClick={() => explore(department)}>{category}<X /></Button>}</div><div className="showcase-arrows mb-4 flex items-center justify-between"><Button variant="chrome" size="icon" aria-label="Produtos anteriores" onClick={() => moveTrack(-1)}><ArrowLeft /></Button><Button variant="chrome" size="icon" aria-label="Próximos produtos" onClick={() => moveTrack(1)}><ArrowRight /></Button></div><p className="micro mb-4 text-muted-foreground">Peças em edição limitada. Quando acabam, não voltam.</p>{visible.length ? <div ref={track} className="product-track" onScroll={e => { const el = e.currentTarget; const first = el.firstElementChild; if (first) setCurrent(Math.min(visible.length, Math.round(el.scrollLeft / (first.clientWidth + 16)) + 1)); }}>{visible.map(p => <article key={p.name} className="product-card"><div className="mb-2 flex justify-between"><span className="micro text-muted-foreground">{p.cat}</span>{p.tag && <span className="new-product-tag micro text-[10px] text-signal">[ Novo ]</span>}</div><div className="product-stage"><Button variant="ghost" className="absolute inset-0 h-full w-full rounded-none p-0" aria-label={`Ver ${p.name}`} onClick={() => openProduct(p)}><img decoding="async" src={p.img} alt={p.name} width={480} height={600} loading="lazy" className="product-cutout aero-cutout" /></Button></div><h3 className="mt-3 font-sans text-sm font-medium">{p.name}</h3><p className="micro text-muted-foreground">{edition(p.name)}</p><p className="micro mt-2"><span className="bg-highlight px-1">{brl(p.price)}</span></p><p className="mt-1 font-mono text-[11px] text-muted-foreground">ou 6x de {brl(installmentAmount(p.price))}</p></article>)}</div> : <p className="py-10 text-sm text-muted-foreground">A seleção de iluminação será apresentada no próximo drop.</p>}</section>
       <section className="site-width pb-16" id="look"><SceneRing /></section>
-      <section className="site-width pb-14" aria-label="Looks da coleção"><div className="section-label"><p className="micro">[ Em movimento ]</p><p className="micro text-muted-foreground">Arquivo de looks / 01—08</p></div><div ref={looksTrack} className="look-track" onScroll={e => { const el = e.currentTarget; setLookProgress((el.scrollLeft + el.clientWidth) / Math.max(el.scrollWidth, 1)); }}>{LOOKS.map((image, i) => <div key={image} className="look-tile"><Button variant="ghost" className="h-auto w-full rounded-none p-0" aria-label={`Abrir Look ${String(i + 1).padStart(2, '0')}`} onClick={() => setCampaign(i % 2)}><img decoding="async" src={image} alt={`Look ${i + 1} — universo YBRD`} width={480} height={600} loading="lazy" className="look-image" /></Button><p className="micro py-2">Look {String(i + 1).padStart(2, '0')}</p></div>)}</div><div className="look-progress" aria-hidden="true"><div style={{ transform: `scaleX(${lookProgress})` }} /></div></section>
+      <LookArchive />
       <section id="editoriais" className="site-width pb-16"><div className="section-label"><p className="micro">[ Outros pontos de encontro ]</p><p className="micro text-muted-foreground">YBRD Journal / 2026</p></div><div className="editorial-grid">{EDITORIALS.map((e, i) => <article key={e.title}><div className="campaign-frame"><img decoding="async" src={e.image} alt={e.title} width={1024} height={1280} loading="lazy" className="editorial-image" /><span className="editorial-number micro absolute left-4 top-3">[ 0{i + 1} ]</span></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><h3 className="micro font-mono">{e.title}</h3><Button variant="chrome" size="sm" className={`micro rounded-full ${mobile && i === 3 ? 'editorial-upcoming' : ''}`} disabled={mobile && i === 3} onClick={() => i === 1 ? explore('Morar', 'Objetos') : setInfo(e.title)}>{mobile ? i === 3 ? 'Em breve' : i < 2 ? 'Explorar' : e.action : e.action}{!(mobile && i === 3) && <ArrowUpRight />}</Button></div><p className="mt-2 text-xs text-muted-foreground">{mobile && i === 3 ? 'Nosso universo, em breve.' : e.subtitle}</p></article>)}</div></section>
       <section id="manifesto" className="site-width pb-20" aria-label="Sobre a YBRD">
         <div className="section-label"><p className="micro">[ SOBRE A YBRD ]</p><p className="micro text-muted-foreground">Manifesto / 2026</p></div>
