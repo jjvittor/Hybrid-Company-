@@ -1,25 +1,25 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { LoaderCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { AccountField, AccountLayout, FieldError } from '@/components/AccountFields';
-import { emailSchema, passwordSchema, signupSchema } from '@/lib/account-schema';
+import { emailSchema, signupSchema } from '@/lib/account-schema';
 
 export function AuthForm({ signup = false }: { signup?: boolean }) {
   const navigate = useNavigate();
   const [values, setValues] = useState({ nome: '', email: '', password: '', confirmation: '', terms: false });
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof typeof values, boolean>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
   const [forgot, setForgot] = useState(false);
   const [sent, setSent] = useState(false);
-  const errors: Record<string, string> = {};
+  const errors: Partial<Record<keyof typeof values, string>> = {};
   if (signup) {
     const result = signupSchema.safeParse(values);
-    if (!result.success) result.error.issues.forEach(issue => { errors[String(issue.path[0])] ??= issue.message; });
+    if (!result.success) result.error.issues.forEach(issue => { errors[String(issue.path[0]) as keyof typeof values] ??= issue.message; });
   } else {
     const email = emailSchema.safeParse(values.email);
     if (!email.success) errors.email = email.error.issues[0]?.message ?? '';
@@ -31,7 +31,7 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
     if (result.error) throw new Error('Não foi possível enviar o e-mail. Tente novamente.');
     setSent(true); toast.success('E-mail de redefinição enviado');
   };
-  const submit = async (event: React.FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault(); setTouched({ nome: true, email: true, password: true, confirmation: true, terms: true });
     if (Object.keys(errors).length || busy) return;
     setBusy(true); setError('');

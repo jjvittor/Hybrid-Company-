@@ -25,8 +25,8 @@ function MyAccount() {
   const [error, setError] = useState('');
   const [touched, setTouched] = useState(false);
   const result = profileSchema.safeParse(values);
-  const errors: Record<string, string> = {};
-  if (touched && !result.success) result.error.issues.forEach(issue => { errors[String(issue.path[0])] = issue.message; });
+  const errors: Partial<Record<keyof typeof values, string>> = {};
+  if (touched && !result.success) result.error.issues.forEach(issue => { errors[String(issue.path[0]) as keyof typeof values] = issue.message; });
   const resetPassword = async () => {
     if (!user?.email || busy) return;
     setBusy('reset'); setError('');
