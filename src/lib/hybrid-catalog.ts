@@ -7,7 +7,6 @@ import vase from "@/assets/cutouts/vase.png";
 import cap from "@/assets/cutouts/cap.png";
 import table from "@/assets/cutouts/table.png";
 
-export const MENU = ["Comprar tudo (48)", "Coleções", "Agenda"] as const;
 export type Department = "Vestir" | "Morar";
 export type Product = { name: string; price: number; img: string; cat: Department; category: string; tag?: "Novo" };
 export const PRODUCTS: Product[] = [
@@ -20,6 +19,7 @@ export const PRODUCTS: Product[] = [
   { name: "Boné Six Panel Verde", price: 159, img: cap, cat: "Vestir", category: "Bonés" },
   { name: "Tênis Hybrid Runner", price: 699, img: sneaker, cat: "Vestir", category: "Calçados" },
 ];
+export const MENU = [`Comprar tudo (${PRODUCTS.length})`, "Coleções", "Agenda"] as const;
 export const CATEGORIES = [
   { n: "Camisetas", img: tee, department: "Vestir" },
   { n: "Moletons", img: hoodie, department: "Vestir" },
@@ -30,5 +30,8 @@ export const CATEGORIES = [
   { n: "Objetos", img: vase, department: "Morar" },
   { n: "Iluminação", img: table, department: "Morar" },
 ] as const;
+export const SHOP_CATEGORIES = CATEGORIES.filter(category =>
+  PRODUCTS.some(product => product.cat === category.department && product.category === category.n),
+);
 export const SET_PRODUCTS = PRODUCTS.filter(p => p.category === "Camisetas" || p.category === "Objetos");
 export const SET_TOTAL = SET_PRODUCTS.reduce((total, p) => total + p.price, 0);
