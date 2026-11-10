@@ -290,3 +290,18 @@ a:hover { color: var(--signal); }
  .curve-caption span { line-height: 20px; }
  .window-bar .micro { white-space: nowrap; }
 }
+
+.account-page { min-height: 100svh; padding-bottom: 4rem; }
+.account-header { display: flex; align-items: center; justify-content: space-between; min-height: 4rem; }
+.account-column { width: min(calc(100% - 2rem), 400px); margin: 3rem auto 0; }
+.account-title { font-family: var(--font-display); font-size: clamp(1.65rem, 7vw, 2.6rem); line-height: 1.1; overflow-wrap: anywhere; }
+.account-form { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.account-field { display: grid; gap: .4rem; font-size: .875rem; }
+.account-input { width: 100%; min-height: 2.75rem; padding: .625rem .8rem; background: var(--background); border: 1px solid var(--border); border-radius: .45rem; }
+.account-input.pr-12 { padding-right: 3rem; }
+.account-input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.account-password-toggle { position: absolute; right: .25rem; top: 50%; transform: translateY(-50%); }
+.account-submit { width: 100%; margin-top: .25rem; border-radius: 999px; }
+.account-block { border-top: 1px solid var(--border); margin-top: 1.75rem; padding-top: 1.25rem; }
+.account-error { display: flex; align-items: baseline; gap: .35rem; color: var(--foreground); font-size: .8rem; }
+.account-honeypot { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }

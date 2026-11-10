@@ -1,71 +1,272 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { LoaderCircle } from 'lucide-react';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { AccountField, AccountLayout, FieldError } from '@/components/AccountFields';
-import { emailSchema, signupSchema } from '@/lib/account-schema';
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
+import { AccountField, AccountLayout, FieldError } from "./AccountFields";
+import { AccountChallenge } from "./AccountChallenge";
+import { useAccount } from "./AccountProvider";
+import { Turnstile } from "./Turnstile";
+import { accountRequest, AccountRequestError, type AccountStatus } from "@/lib/account-api";
+import { actions, genericEmailMessage } from "@/lib/account-schema";
 
-export function AuthForm({ signup = false }: { signup?: boolean }) {
+type Mode = "login" | "signup" | "recover";
+export function AuthForm({
+  mode = "login",
+  next = "/minha-conta",
+}: {
+  mode?: Mode;
+  next?: "/" | "/minha-conta";
+}) {
   const navigate = useNavigate();
-  const [values, setValues] = useState({ nome: '', email: '', password: '', confirmation: '', terms: false });
-  const [touched, setTouched] = useState<Partial<Record<keyof typeof values, boolean>>>({});
+  const { refresh, clear } = useAccount();
+  const [values, setValues] = useState({
+    nome: "",
+    email: "",
+    password: "",
+    confirmation: "",
+    website: "",
+  });
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [confirmEmail, setConfirmEmail] = useState('');
-  const [forgot, setForgot] = useState(false);
-  const [sent, setSent] = useState(false);
-  const errors: Partial<Record<keyof typeof values, string>> = {};
-  if (signup) {
-    const result = signupSchema.safeParse(values);
-    if (!result.success) result.error.issues.forEach(issue => { errors[String(issue.path[0]) as keyof typeof values] ??= issue.message; });
-  } else {
-    const email = emailSchema.safeParse(values.email);
-    if (!email.success) errors.email = email.error.issues[0]?.message ?? '';
-    if (!forgot && !values.password) errors.password = 'Digite sua senha';
-  }
-  const update = (field: 'nome' | 'email' | 'password' | 'confirmation', value: string) => { setValues(v => ({ ...v, [field]: value })); setTouched(t => ({ ...t, [field]: true })); setError(''); };
-  const resetEmail = async () => {
-    const result = await supabase.auth.resetPasswordForEmail(values.email.trim(), { redirectTo: `${window.location.origin}/reset-password` });
-    if (result.error) throw new Error('Não foi possível enviar o e-mail. Tente novamente.');
-    setSent(true); toast.success('E-mail de redefinição enviado');
-  };
-  const submit = async (event: FormEvent) => {
-    event.preventDefault(); setTouched({ nome: true, email: true, password: true, confirmation: true, terms: true });
-    if (Object.keys(errors).length || busy) return;
-    setBusy(true); setError('');
-    try {
-      if (forgot) { await resetEmail(); return; }
-      if (signup) {
-        const data = signupSchema.parse(values);
-        const result = await supabase.auth.signUp({ email: data.email, password: data.password, options: { data: { nome: data.nome, terms_accepted: true }, emailRedirectTo: window.location.origin } });
-        if (result.error) throw new Error('Não foi possível criar a conta. Tente novamente.');
-        setConfirmEmail(data.email); setValues(v => ({ ...v, password: '', confirmation: '' })); toast.success('Conta criada');
-      } else {
-        const result = await supabase.auth.signInWithPassword({ email: values.email.trim(), password: values.password });
-        if (result.error) throw new Error('E-mail ou senha incorretos.');
-        await navigate({ to: '/minha-conta' });
+  const [error, setError] = useState("");
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState("");
+  const [captcha, setCaptcha] = useState("");
+  const [requiresCaptcha, setRequiresCaptcha] = useState(mode !== "login");
+  const [widget, setWidget] = useState(0);
+  const [factors, setFactors] = useState<string[]>([]);
+  const [link, setLink] = useState<{ token: string; type: "signup" | "email_change" }>();
+  const login = mode === "login";
+  const signup = mode === "signup";
+
+  useEffect(() => {
+    if (!login) return;
+    if (window.location.hash) {
+      const params = new URLSearchParams(window.location.hash.slice(1));
+      const token = params.get("token");
+      const type = params.get("type");
+      if (token && (type === "signup" || type === "email_change")) {
+        history.replaceState(history.state, "", window.location.pathname + window.location.search);
+        if (actions.verify.safeParse({ token, type }).success) setLink({ token, type });
+        else setError("Este link é inválido ou expirou.");
       }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Tente novamente.'); }
-    finally { setBusy(false); }
+    }
+    void refresh()
+      .then((status) => setFactors(status.factors ?? []))
+      .catch(clear);
+  }, [login, refresh, clear]);
+
+  const update = (key: keyof typeof values, value: string) => {
+    setValues((prev) => ({ ...prev, [key]: value }));
+    setFields((prev) => ({ ...prev, [key]: "" }));
+    setError("");
   };
-  const resend = async () => {
-    setBusy(true); setError('');
+  const showError = (cause: unknown) => {
+    if (cause instanceof AccountRequestError) {
+      setError(cause.message);
+      if (cause.captcha) setRequiresCaptcha(true);
+    } else setError("Não foi possível concluir. Tente novamente.");
+  };
+
+  const submit = async (event: FormEvent, action: Mode | "resend" = mode) => {
+    event.preventDefault();
+    if (busy) return;
+    const shared = { email: values.email, website: values.website, captcha: captcha || undefined };
+    const credentials = { password: values.password };
+    const input =
+      action === "login"
+        ? { ...shared, ...credentials, next }
+        : action === "signup"
+          ? { ...shared, ...credentials, nome: values.nome, confirmation: values.confirmation }
+          : shared;
+    const result = actions[action].safeParse(input);
+    if (!result.success) {
+      setFields(
+        Object.fromEntries(result.error.issues.map((issue) => [issue.path[0], issue.message])),
+      );
+      return;
+    }
+    setBusy(true);
+    setError("");
     try {
-      const { error } = await supabase.auth.resend({ type: 'signup', email: confirmEmail, options: { emailRedirectTo: window.location.origin } });
-      if (error) throw new Error('Aguarde um momento e tente reenviar.');
-      toast.success('E-mail de confirmação reenviado');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Tente novamente.'); } finally { setBusy(false); }
+      const response = await accountRequest<{ next?: "/" | "/minha-conta" }>(action, result.data);
+      if (action === "login") {
+        const status: AccountStatus = await refresh();
+        if (status.factors?.length) setFactors(status.factors);
+        else if (status.user)
+          await navigate({ to: response.next === "/" ? "/" : "/minha-conta", replace: true });
+        else setError("E-mail ou senha incorretos.");
+      } else {
+        setMessage(genericEmailMessage);
+      }
+    } catch (cause) {
+      showError(cause);
+    } finally {
+      setValues((prev) => ({ ...prev, password: "", confirmation: "" }));
+      setCaptcha("");
+      setWidget((value) => value + 1);
+      setBusy(false);
+    }
   };
-  if (confirmEmail) return <AccountLayout title="CONFIRME SEU E-MAIL"><p className="mt-5 text-sm">Enviamos um link de confirmação para <strong className="break-all">{confirmEmail}</strong>.</p><FieldError error={error} /><Button className="account-submit" disabled={busy} onClick={resend}>{busy && <LoaderCircle className="animate-spin" />}Reenviar e-mail</Button><Button asChild variant="link" className="mt-3"><Link to="/entrar">Voltar para entrar</Link></Button></AccountLayout>;
-  return <AccountLayout title={forgot ? 'RECUPERAR SENHA' : signup ? 'CRIAR CONTA' : 'ENTRAR'}><form className="account-form" noValidate onSubmit={submit}>
-    {signup && <AccountField label="Nome" name="nome" value={values.nome} onChange={v => update('nome', v)} error={touched.nome ? errors.nome : undefined} autoComplete="name" maxLength={100} />}
-    <AccountField label="E-mail" name="email" type="email" value={values.email} onChange={v => update('email', v)} error={touched.email ? errors.email : undefined} autoComplete="email" />
-    {!forgot && <AccountField label="Senha" name="password" type="password" value={values.password} onChange={v => update('password', v)} error={touched.password ? errors.password : undefined} autoComplete={signup ? 'new-password' : 'current-password'} maxLength={128} />}
-    {signup && <><AccountField label="Confirmação de senha" name="confirmation" type="password" value={values.confirmation} onChange={v => update('confirmation', v)} error={touched.confirmation ? errors.confirmation : undefined} autoComplete="new-password" maxLength={128} /><label className="account-consent"><input type="checkbox" checked={values.terms} onChange={e => { setValues(v => ({ ...v, terms: e.target.checked })); setTouched(t => ({ ...t, terms: true })); }} /> <span>Li e aceito os <a href="#">Termos de uso</a> e a <a href="#">Política de privacidade</a></span></label><FieldError error={touched.terms ? errors.terms : undefined} /></>}
-    {!signup && !forgot && <Button variant="link" type="button" className="justify-start px-0 text-xs" onClick={() => { setForgot(true); setError(''); }}>Esqueci minha senha</Button>}
-    <FieldError error={error} />{sent && <p className="text-sm" role="status">Se o e-mail estiver cadastrado, você receberá um link para redefinir sua senha.</p>}
-    <Button type="submit" className="account-submit" disabled={busy}>{busy && <LoaderCircle className="animate-spin" />}{busy ? 'Enviando…' : forgot ? 'Enviar link' : signup ? 'Criar conta' : 'Entrar'}</Button>
-  </form><div className="mt-5 text-center text-sm">{forgot ? <Button variant="link" onClick={() => { setForgot(false); setSent(false); }}>Voltar para entrar</Button> : <Button asChild variant="link"><Link to={signup ? '/entrar' : '/criar-conta'}>{signup ? 'Já tenho conta. Entrar' : 'Criar uma conta'}</Link></Button>}</div></AccountLayout>;
+
+  if (link)
+    return (
+      <AccountLayout title="CONFIRMAR E-MAIL">
+        <p className="mt-5 text-sm">Confirme o endereço de e-mail para continuar.</p>
+        <Button
+          className="account-submit mt-5"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const data = await accountRequest<{ message: string }>("verify", link);
+              setMessage(data.message);
+            } catch (cause) {
+              showError(cause);
+            } finally {
+              setLink(undefined);
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Confirmando…" : "Confirmar e-mail"}
+        </Button>
+      </AccountLayout>
+    );
+
+  if (factors.length)
+    return (
+      <AccountLayout title="VERIFICAÇÃO EM DUAS ETAPAS">
+        <AccountChallenge
+          factors={factors}
+          onDone={async () => {
+            const status = await refresh();
+            if (status.user) await navigate({ to: next, replace: true });
+          }}
+          onRecovered={() => {
+            clear();
+            setFactors([]);
+            setMessage("Autenticador removido. Entre com sua senha e configure um novo.");
+          }}
+        />
+        <Button
+          variant="link"
+          className="px-0"
+          onClick={async () => {
+            try {
+              await accountRequest("logout", { all: false });
+              clear();
+              setFactors([]);
+            } catch (cause) {
+              showError(cause);
+            }
+          }}
+        >
+          Voltar para entrar
+        </Button>
+        <FieldError error={error} />
+      </AccountLayout>
+    );
+
+  const title = login ? "ENTRAR" : signup ? "CRIAR CONTA" : "RECUPERAR SENHA";
+  return (
+    <AccountLayout title={title}>
+      {message && (
+        <p role="status" className="mt-5 text-sm">
+          {message}
+        </p>
+      )}
+      <form
+        className="account-form"
+        noValidate
+        onSubmit={(event) =>
+          void submit(event, signup && message === genericEmailMessage ? "resend" : mode)
+        }
+      >
+        <div className="account-honeypot" aria-hidden="true">
+          <label>
+            Site
+            <input
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={values.website}
+              onChange={(event) => update("website", event.target.value)}
+            />
+          </label>
+        </div>
+        {signup && !message && (
+          <AccountField
+            label="Nome"
+            name="nome"
+            value={values.nome}
+            onChange={(value) => update("nome", value)}
+            error={fields["nome"]}
+            autoComplete="name"
+            maxLength={80}
+          />
+        )}
+        <AccountField
+          label="E-mail"
+          name="email"
+          type="email"
+          value={values.email}
+          onChange={(value) => update("email", value)}
+          error={fields["email"]}
+          autoComplete={login ? "username" : "email"}
+        />
+        {(login || (signup && !message)) && (
+          <AccountField
+            label="Senha"
+            name="password"
+            type="password"
+            value={values.password}
+            onChange={(value) => update("password", value)}
+            error={fields["password"]}
+            autoComplete={signup ? "new-password" : "current-password"}
+            maxLength={128}
+          />
+        )}
+        {signup && !message && (
+          <AccountField
+            label="Confirmação de senha"
+            name="confirmation"
+            type="password"
+            value={values.confirmation}
+            onChange={(value) => update("confirmation", value)}
+            error={fields["confirmation"]}
+            autoComplete="new-password"
+            maxLength={128}
+          />
+        )}
+        {login && (
+          <Button asChild variant="link" className="justify-start px-0 text-xs">
+            <Link to="/recuperar-senha">Esqueci minha senha</Link>
+          </Button>
+        )}
+        {requiresCaptcha && <Turnstile key={widget} onToken={setCaptcha} />}
+        <FieldError error={error} />
+        <Button
+          type="submit"
+          className="account-submit"
+          disabled={busy || (requiresCaptcha && !captcha)}
+        >
+          {busy
+            ? "Enviando…"
+            : login
+              ? "Entrar"
+              : signup
+                ? message
+                  ? "Reenviar e-mail"
+                  : "Criar conta"
+                : "Enviar link"}
+        </Button>
+      </form>
+      <div className="mt-5 text-center text-sm">
+        <Button asChild variant="link">
+          <Link to={login ? "/criar-conta" : "/entrar"}>
+            {login ? "Criar uma conta" : "Voltar para entrar"}
+          </Link>
+        </Button>
+      </div>
+    </AccountLayout>
+  );
 }

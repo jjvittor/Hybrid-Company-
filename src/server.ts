@@ -1,6 +1,7 @@
 import "./lib/error-capture";
 
-import { consumeLastCapturedError } from "./lib/error-capture";
+import { handleAccount } from "./lib/account-http.server";
+import { nonceHeader, securityHeaders } from "./lib/security-headers";
 import { renderErrorPage } from "./lib/error-page";
 
 type ServerEntry = {
@@ -28,7 +29,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   const body = await response.clone().text();
   if (!isH3SwallowedErrorBody(body)) return response;
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  console.error("[YBRD] Falha na renderização.");
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -46,16 +47,27 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const nonce = crypto.randomUUID().replaceAll("-", "");
+    const url = new URL(request.url);
+    let response: Response;
     try {
-      const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
-    } catch (error) {
-      console.error(error);
-      return new Response(renderErrorPage(), {
+      if (url.pathname.startsWith("/api/conta/")) {
+        response = await handleAccount(request, url.pathname.slice("/api/conta/".length));
+      } else {
+        const headers = new Headers(request.headers);
+        headers.set(nonceHeader, nonce);
+        const handler = await getServerEntry();
+        response = await normalizeCatastrophicSsrResponse(
+          await handler.fetch(new Request(request, { headers }), env, ctx),
+        );
+      }
+    } catch {
+      console.error("[YBRD] Falha na requisição.");
+      response = new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
       });
     }
+    return securityHeaders(request, response, nonce);
   },
 };
