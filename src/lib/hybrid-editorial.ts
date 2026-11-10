@@ -17,7 +17,7 @@ export const EDITORIALS = [
   { title: 'Colaborações', subtitle: 'Ideias em comum. Novas formas.', action: 'Comprar', image: campaign },
   { title: 'Objetos', subtitle: 'Presença em cada detalhe.', action: 'Comprar', image: home },
   { title: 'Agenda', subtitle: 'Encontros fora da tela.', action: 'Ver', image: look },
-  { title: 'Loja Rua Augusta', subtitle: 'Nosso universo, ao vivo.', action: 'Visitar', image: studio },
+  { title: 'Loja física', subtitle: 'Imagem conceitual.', action: 'Em breve', image: studio },
 ];
 export const HOTSPOTS = [
   { productIndex: 0, className: 'hotspot-tee' },

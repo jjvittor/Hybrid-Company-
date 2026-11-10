@@ -19,6 +19,7 @@ import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedMinhaContaRouteImport } from './routes/_authenticated/minha-conta'
 import { Route as ColecoesColecaoRouteImport } from './routes/colecoes/$colecao'
+import { Route as ProdutoProdutoRouteImport } from './routes/produto/$produto'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -69,6 +70,11 @@ const ColecoesColecaoRoute = ColecoesColecaoRouteImport.update({
   path: '/colecoes/$colecao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProdutoProdutoRoute = ProdutoProdutoRouteImport.update({
+  id: '/produto/$produto',
+  path: '/produto/$produto',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
+  '/produto/$produto': typeof ProdutoProdutoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
+  '/produto/$produto': typeof ProdutoProdutoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
+  '/produto/$produto': typeof ProdutoProdutoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/minha-conta'
     | '/colecoes/$colecao'
+    | '/produto/$produto'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/minha-conta'
     | '/colecoes/$colecao'
+    | '/produto/$produto'
   id:
     | '__root__'
     | '/'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/minha-conta'
     | '/colecoes/$colecao'
+    | '/produto/$produto'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ColecoesColecaoRoute: typeof ColecoesColecaoRoute
+  ProdutoProdutoRoute: typeof ProdutoProdutoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ColecoesColecaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/produto/$produto': {
+      id: '/produto/$produto'
+      path: '/produto/$produto'
+      fullPath: '/produto/$produto'
+      preLoaderRoute: typeof ProdutoProdutoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -250,6 +270,7 @@ const rootRouteChildren: RootRouteChildren = {
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ColecoesColecaoRoute: ColecoesColecaoRoute,
+  ProdutoProdutoRoute: ProdutoProdutoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

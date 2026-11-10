@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from '@/routes/index';
-import { StorefrontCartProvider } from '@/components/StorefrontCart';
+import { PREVIEW_CART_KEY, StorefrontCartProvider } from '@/components/StorefrontCart';
 
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...await importOriginal<typeof import('@tanstack/react-router')>(),
@@ -10,6 +10,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => ({
 }));
 
 beforeEach(() => {
+  localStorage.removeItem(PREVIEW_CART_KEY);
   vi.stubGlobal('IntersectionObserver', class {
     observe() {}
     disconnect() {}
@@ -50,11 +51,12 @@ describe('Prévia da home', () => {
   it('busca uma peça, escolhe tamanho e remove o item da sacola de demonstração', () => {
     render(<Home />, { wrapper: StorefrontCartProvider });
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Buscar produtos' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar produtos' }), {
       target: { value: 'heavy' },
     });
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Camiseta Heavy Box/ }));
 
+    expect(screen.getByRole('button', { name: 'Adicionar à sacola' })).toBeDisabled();
     fireEvent.change(screen.getByRole('combobox', { name: 'Tamanho' }), { target: { value: 'G' } });
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar à sacola' }));
 
@@ -63,6 +65,24 @@ describe('Prévia da home', () => {
     expect(bag.getByText(/Pedidos e pagamentos ainda não estão disponíveis/)).toBeInTheDocument();
     fireEvent.click(bag.getByRole('button', { name: /Remover Camiseta/ }));
     expect(bag.getByText('Sua sacola está vazia.')).toBeInTheDocument();
+  });
+
+  it('restaura a sacola e mantém quantidade e tamanho por variante', () => {
+    localStorage.setItem(PREVIEW_CART_KEY, JSON.stringify([
+      { slug: 'camiseta-heavy-box-off-white', size: 'G', quantity: 2 },
+      { slug: 'camiseta-heavy-box-off-white', size: 'GG', quantity: 1 },
+      { slug: 'camiseta-heavy-box-off-white', size: 'XL', quantity: 50 },
+    ]));
+    const page = render(<Home />, { wrapper: StorefrontCartProvider });
+    fireEvent.click(screen.getByRole('button', { name: 'Sacola, 3 itens' }));
+    const bag = within(screen.getByRole('dialog', { name: 'Sua sacola' }));
+    const group = within(bag.getByRole('group', { name: 'Quantidade de Camiseta Heavy Box Off-White, G' }));
+    fireEvent.click(group.getByRole('button', { name: 'Aumentar quantidade' }));
+    expect(group.getByText('3')).toBeInTheDocument();
+    page.unmount();
+
+    render(<Home />, { wrapper: StorefrontCartProvider });
+    expect(screen.getByRole('button', { name: 'Sacola, 4 itens' })).toBeInTheDocument();
   });
 
   it('abre a política de privacidade sem enviar o formulário preenchido', () => {
