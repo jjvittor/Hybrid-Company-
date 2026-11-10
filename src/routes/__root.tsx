@@ -11,6 +11,7 @@ import {
 import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { StorefrontCartProvider } from "@/components/StorefrontCart";
 import { AccountProvider } from "@/components/AccountProvider";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -117,7 +118,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <AccountProvider><Outlet /><Toaster /></AccountProvider>
+      <AccountProvider><StorefrontCartProvider><Outlet /></StorefrontCartProvider><Toaster /></AccountProvider>
     </QueryClientProvider>
   );
 }

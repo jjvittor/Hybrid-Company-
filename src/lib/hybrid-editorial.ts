@@ -7,9 +7,10 @@ import p2 from '@/assets/p2.jpg';
 import scene from '@/assets/hybrid-scene.jpg';
 import set from '@/assets/hybrid-set.jpg';
 export const CAMPAIGNS = [
-  { image: campaign, title: 'Concreto Dourado', label: 'Drop 01', code: 'YBRD / CD—001', department: 'Todos' },
-  { image: home, title: 'YBRD HOME', label: 'Objetos e mobiliário', code: 'YBRD / HH—002', department: 'Morar' },
+  { image: campaign, slug: 'concreto-dourado', title: 'Concreto Dourado', label: 'Drop 01', code: 'YBRD / CD—001', department: 'Vestir', description: 'Streetwear em edição limitada. Formas amplas e tons de concreto.' },
+  { image: home, slug: 'ybrd-home', title: 'Ybrd Home', label: 'Objetos e mobiliário', code: 'YBRD / HH—002', department: 'Morar', description: 'Mobiliário e objetos para levar o universo da Ybrd para casa.' },
 ] as const;
+export type Campaign = (typeof CAMPAIGNS)[number];
 export const LOOKS = [campaign, home, look, studio, p1, p2, scene, set];
 export const SCENE = look;
 export const EDITORIALS = [

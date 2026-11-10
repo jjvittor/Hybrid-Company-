@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Route } from '@/routes/index';
+import { StorefrontCartProvider } from '@/components/StorefrontCart';
 
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...await importOriginal<typeof import('@tanstack/react-router')>(),
@@ -24,7 +25,7 @@ const Home = Route.options.component!;
 
 describe('Prévia da home', () => {
   it('abre o menu no primeiro clique e devolve o foco ao fechar com Escape', () => {
-    render(<Home />);
+    render(<Home />, { wrapper: StorefrontCartProvider });
     const menu = within(screen.getByRole('navigation', { name: 'Menu principal' }));
     const trigger = menu.getByRole('button', { name: /Comprar tudo/ });
 
@@ -40,14 +41,14 @@ describe('Prévia da home', () => {
   });
 
   it('abre o menu de celular com acesso à conta', () => {
-    render(<Home />);
+    render(<Home />, { wrapper: StorefrontCartProvider });
     fireEvent.click(screen.getByRole('button', { name: 'Abrir menu' }));
     const drawer = screen.getByRole('dialog');
     expect(within(drawer).getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar');
   });
 
   it('busca uma peça, escolhe tamanho e remove o item da sacola de demonstração', () => {
-    render(<Home />);
+    render(<Home />, { wrapper: StorefrontCartProvider });
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Buscar produtos' }), {
       target: { value: 'heavy' },
@@ -65,7 +66,7 @@ describe('Prévia da home', () => {
   });
 
   it('abre a política de privacidade sem enviar o formulário preenchido', () => {
-    render(<Home />);
+    render(<Home />, { wrapper: StorefrontCartProvider });
     const footer = within(screen.getByRole('contentinfo'));
     fireEvent.change(footer.getByRole('textbox', { name: 'Seu e-mail' }), {
       target: { value: 'teste@example.com' },
