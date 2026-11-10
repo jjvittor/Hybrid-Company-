@@ -48,7 +48,7 @@ export function AccountChallenge({
     }
   };
   return (
-    <form className="account-form" onSubmit={submit} noValidate>
+    <form method="post" className="account-form" onSubmit={submit} noValidate>
       <p className="text-sm">
         {useBackup
           ? "O código encerra as sessões e desativa o autenticador perdido. Ative outro após entrar."

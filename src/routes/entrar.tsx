@@ -10,5 +10,5 @@ export const Route = createFileRoute("/entrar")({
 });
 function Login() {
   const { next } = Route.useSearch();
-  return <AuthForm next={next ?? "/minha-conta"} />;
+  return <AuthForm next={next === "/" ? "/" : "/minha-conta"} />;
 }

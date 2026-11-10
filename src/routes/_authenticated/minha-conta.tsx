@@ -161,7 +161,7 @@ function MyAccount() {
     <AccountLayout title="MINHA CONTA">
       <section className="account-block">
         <h2 className="micro">DADOS</h2>
-        <form className="account-form" noValidate onSubmit={save}>
+        <form method="post" className="account-form" noValidate onSubmit={save}>
           <AccountField
             label="Nome"
             name="nome"
@@ -273,7 +273,7 @@ function MyAccount() {
                 </ul>
               </>
             ) : (
-              <form className="account-form" onSubmit={submit} noValidate>
+              <form method="post" className="account-form" onSubmit={submit} noValidate>
                 {mode === "delete" && (
                   <p className="text-sm">
                     A exclusão remove sua conta e seus dados pessoais. Esta ação é permanente.

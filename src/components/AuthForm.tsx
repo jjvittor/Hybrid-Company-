@@ -26,6 +26,7 @@ export function AuthForm({
     website: "",
   });
   const [busy, setBusy] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState("");
   const [fields, setFields] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
@@ -38,6 +39,7 @@ export function AuthForm({
   const signup = mode === "signup";
 
   useEffect(() => {
+    setHydrated(true);
     if (!login) return;
     if (window.location.hash) {
       const params = new URLSearchParams(window.location.hash.slice(1));
@@ -175,6 +177,7 @@ export function AuthForm({
         </p>
       )}
       <form
+        method="post"
         className="account-form"
         noValidate
         onSubmit={(event) =>
@@ -247,7 +250,7 @@ export function AuthForm({
         <Button
           type="submit"
           className="account-submit"
-          disabled={busy || (requiresCaptcha && !captcha)}
+          disabled={!hydrated || busy || (requiresCaptcha && !captcha)}
         >
           {busy
             ? "Enviando…"

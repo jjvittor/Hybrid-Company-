@@ -92,6 +92,7 @@ function ResetPassword() {
         <AccountChallenge factors={factors} recovery onDone={() => setFactors([])} />
       ) : (
         <form
+          method="post"
           className="account-form"
           noValidate
           onSubmit={async (event) => {
