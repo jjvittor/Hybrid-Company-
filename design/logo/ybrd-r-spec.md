@@ -111,3 +111,11 @@ A pedido do usuário, somente a logo do cabeçalho da coleção `/colecoes/ybrd-
 - Novo favicon SVG utiliza o Y existente e ponto signal. O ICO anterior permanece arquivado e sem uso. Nenhuma fotografia foi trocada ou editada no site.
 - A prévia gerada a partir da captura do usuário é apenas comparação visual; não é usada como código ou imagem de interface.
 - Chromium validou título HYBRD, cor do H, logotipos globais, fonte local e ausência de overflow em 320/390/1440px. Comparação da fonte confirmou alteração apenas de B/R e limites dos R compostos dependentes.
+
+## Refino exclusivo do R — revisão 2
+
+A pedido do usuário, somente o R oficial (Unbounded A) foi refinado. Y, B, D, H, ponto, cores, dimensões externas, origem de cada letra e avanços da fonte permanecem iguais.
+
+A diagonal anterior partia de x=558,499 / y=369,600 e abria muito. Agora a saída da barriga encontra x=645 / y=387, com uma transição quadrática curta a partir do mesmo ombro. A perna é mais vertical e se apoia no mesmo extremo de base x=828,899. Sua espessura normal continua 162,699; a largura horizontal do apoio resulta da compensação pela nova inclinação. A haste e o contador superior ficam idênticos à revisão anterior, derivados do B.
+
+O novo desenho foi aplicado ao SVG oficial A e ao R da fonte local. Os R acentuados compostos herdam a alteração; a comparação binária dos glifos confirmou que B e todas as demais letras independentes permanecem intactos. Todos os avanços e métricas horizontais são iguais. Variantes B/C e exemplos históricos permanecem arquivados. `variants/ybrd-r-comparison.svg` compara o antes e o depois com as outras letras no mesmo lugar.
