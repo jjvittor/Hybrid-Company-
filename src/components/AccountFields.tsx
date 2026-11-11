@@ -1,3 +1,4 @@
+import { YbrdLogo } from "@/components/YbrdLogo";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Eye, EyeOff, CircleAlert, ArrowLeft } from "lucide-react";
@@ -8,7 +9,7 @@ export function AccountLayout({ title, children }: { title: string; children: Re
     <main className="account-page">
       <header className="account-header site-width">
         <Link to="/" className="wordmark">
-          YBRD
+          <YbrdLogo />
         </Link>
         <Button asChild variant="ghost" size="icon">
           <Link to="/" aria-label="Voltar ao início">

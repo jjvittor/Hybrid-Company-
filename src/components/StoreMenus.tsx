@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } f
 import { createPortal } from 'react-dom';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, ChevronDown } from 'lucide-react';
+import { YbrdLogo } from '@/components/YbrdLogo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { CAMPAIGNS } from '@/lib/hybrid-editorial';
@@ -60,7 +61,7 @@ function MenuContent({ panel, onNavigate, onSelectProducts }: PanelProps) {
         {CAMPAIGNS.map((campaign, index) => <img key={campaign.slug} src={campaign.image} alt={index === feature ? campaign.title : ''} aria-hidden={index !== feature} width={1024} height={1280} className={index === feature ? 'is-featured' : ''} />)}
       </div>
       <div className="store-menu-feature-caption">
-        <p className="micro">{feature === 0 ? 'DROP 01 / CONCRETO DOURADO' : 'YBRD HOME / OBJETOS E MOBILIÁRIO'}</p>
+        <p className="micro">{feature === 0 ? 'DROP 01 / CONCRETO DOURADO' : 'HYBRD / OBJETOS E MOBILIÁRIO'}</p>
         <Button asChild size="sm" className="micro rounded-full"><Link to="/colecoes/$colecao" params={{ colecao: CAMPAIGNS[feature].slug }} search={{}} onClick={onNavigate}>Ver <ArrowUpRight /></Link></Button>
       </div>
     </div>
@@ -69,7 +70,7 @@ function MenuContent({ panel, onNavigate, onSelectProducts }: PanelProps) {
   return <div className="store-menu-collections">
     <div className="store-menu-collection-list">
       {CAMPAIGNS.map((campaign, index) => <Link key={campaign.slug} to="/colecoes/$colecao" params={{ colecao: campaign.slug }} search={{}} className="store-menu-collection-link menu-enter-item" style={stagger(index)} onClick={onNavigate} onFocus={() => setHighlight(index)} onMouseEnter={() => setHighlight(index)}>
-        <span className="store-menu-large"><span>{campaign.title}</span><ArrowUpRight aria-hidden="true" /></span>
+        <span className="store-menu-large"><span className="brand-display">{campaign.slug === 'ybrd-home' ? <YbrdLogo brand="hybrd" /> : campaign.title}</span><ArrowUpRight aria-hidden="true" /></span>
         <span className="micro">{index === 0 ? 'Drop 01 / 2026' : 'Objetos e mobiliário'}</span>
       </Link>)}
       <div className="store-menu-collection-link is-disabled menu-enter-item" style={stagger(2)} aria-disabled="true">
@@ -82,7 +83,7 @@ function MenuContent({ panel, onNavigate, onSelectProducts }: PanelProps) {
     <div className="store-menu-campaigns">
       {CAMPAIGNS.map((campaign, index) => <Link key={campaign.slug} to="/colecoes/$colecao" params={{ colecao: campaign.slug }} search={{}} onClick={onNavigate} onMouseEnter={() => setHighlight(index)} onFocus={() => setHighlight(index)} className="store-menu-campaign menu-enter-item" style={stagger(index + 4)}>
         <img src={campaign.image} alt={campaign.title} width={1024} height={1280} style={{ opacity: highlight === null || highlight === index ? 1 : 0.5 }} />
-        <span className="micro">{index === 0 ? 'DROP 01 / CONCRETO DOURADO' : 'YBRD HOME / OBJETOS E MOBILIÁRIO'}</span>
+        <span className="micro">{index === 0 ? 'DROP 01 / CONCRETO DOURADO' : 'HYBRD / OBJETOS E MOBILIÁRIO'}</span>
       </Link>)}
     </div>
   </div>;
@@ -208,7 +209,7 @@ export function StoreMenus({ panel, onPanelChange, mobileOpen, onMobileChange, o
     <Sheet open={mobileOpen} onOpenChange={onMobileChange}>
       <SheetContent side="right" closeLabel="Fechar menu" className="store-mobile-menu" onCloseAutoFocus={event => { event.preventDefault(); document.querySelector<HTMLButtonElement>('[aria-label="Abrir menu"]')?.focus(); }}>
         <SheetHeader>
-          <SheetTitle className="wordmark text-left">YBRD</SheetTitle>
+          <SheetTitle className="wordmark text-left"><YbrdLogo /></SheetTitle>
           <SheetDescription className="sr-only">Comprar tudo e coleções da Ybrd</SheetDescription>
         </SheetHeader>
         <div className="store-mobile-accordions">

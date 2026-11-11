@@ -1,9 +1,10 @@
 @import "tailwindcss" source(none);
 @import "tw-animate-css";
 @source "../src";
+@font-face { font-family: "Ybrd Display"; src: url("./assets/fonts/ybrd-display-medium.woff") format("woff"); font-style: normal; font-weight: 500; font-display: swap; }
 @custom-variant dark (&:is(.dark *));
 @theme inline {
-  --font-display: "Unbounded", sans-serif;
+  --font-display: "Ybrd Display", sans-serif;
   --font-sans: "Figtree", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   --color-background: var(--background);
@@ -437,14 +438,10 @@ a:hover { color: var(--signal); }
 .scene-curve .caption-out span { animation: scene-text-exit 240ms both; }
 @keyframes scene-text-exit { to { opacity: 0; } }
 
-/* R refinement: original letter outlines, font metrics and existing layout retained. */
+/* Official vector identity: approved display lettering at every logo placement. */
 .ybrd-logo { display: inline; color: inherit; }
-.ybrd-logo-text { display: inline-block; width: 2.604em; height: .7em; vertical-align: baseline; }
-.ybrd-logo-display { display: none; }
-.ybrd-logo[data-brand="hybrd"] .ybrd-logo-text { width: 3.354em; }
-.hero-brand .ybrd-logo-text { display: none; }
-.hero-brand .ybrd-logo-display { display: inline-block; width: 3.503em; height: .75em; vertical-align: baseline; }
-.hero-brand .ybrd-logo[data-brand="hybrd"] .ybrd-logo-display { width: 4.427em; }
+.ybrd-logo-mark { display: inline-block; height: .7em; width: auto; vertical-align: baseline; }
+.hero-brand .ybrd-logo-mark, .collection-title .ybrd-logo-mark, .brand-display .ybrd-logo-mark { height: .75em; }
 
 /* Isolated, temporary comparison route; never included in the site menu. */
 .logo-lab { padding: 32px; background: var(--cream); color: var(--ink); }

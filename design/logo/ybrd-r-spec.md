@@ -1,5 +1,7 @@
 # YBRD — refino do R
 
+> Registro das etapas de desenho. A seção “Identidade oficial” ao final documenta a aplicação atual e substitui as limitações de aplicação descritas nas etapas anteriores.
+
 ## Inspeção antes da edição
 
 `git status --short --branch`: árvore limpa em `codex/vitrine-catalogo-real`.
@@ -98,3 +100,14 @@ O ajuste B–R/R–D equilibra o ritmo; B e C permanecem disponíveis para compa
 ## Aplicação posterior — HYBRD
 
 A pedido do usuário, somente a logo do cabeçalho da coleção `/colecoes/ybrd-home` recebe um H antes de YBRD. O H usa os contornos das mesmas famílias existentes e `currentColor` por meio de `text-signal`, o mesmo token do ponto principal. Nome acessível HYBRD. Desktop e celular conferidos; demais páginas continuam com YBRD.
+
+## Identidade oficial — correção de aplicação
+
+- O usuário esclareceu que HYBRD deveria substituir o título grande YBRD HOME na introdução da coleção. Agora ele aparece nesse título, com H em signal; código, descrição, chamadas, menus e metadados da coleção usam HYBRD. A URL `/colecoes/ybrd-home` foi preservada.
+- YBRD com ponto signal é a marca global no cabeçalho, hero, menu mobile, rodapé e cabeçalho da conta. Todos usam os mesmos contornos Unbounded A, sem alternância para Figtree. HYBRD é a variação de home, sem ponto e com H signal.
+- `src/assets/fonts/ybrd-display-medium.woff` é a família local **Ybrd Display**, derivada da Unbounded 500 já usada. Somente B/R foram reconstruídos a partir dos paths aprovados; R acentuados compostos herdam o novo R. Demais glifos, avanços, kerning e métricas verticais preservados. A família Figtree do texto corrente e a fonte mono não mudaram.
+- `build-display-font.py` permite reproduzir a fonte a partir do arquivo Unbounded variável indicado acima: `python design/logo/build-display-font.py /caminho/Unbounded-wght.ttf`. FontTools é uma ferramenta de design já disponível no ambiente; não faz parte das dependências do site e não é exigida pelo build.
+- Licença original SIL OFL incluída em `src/assets/fonts/OFL-Unbounded.txt`; fonte modificada renomeada para Ybrd Display. O Google Fonts continua servindo somente Figtree e JetBrains Mono; a fonte dos títulos é carregada da própria aplicação.
+- Novo favicon SVG utiliza o Y existente e ponto signal. O ICO anterior permanece arquivado e sem uso. Nenhuma fotografia foi trocada ou editada no site.
+- A prévia gerada a partir da captura do usuário é apenas comparação visual; não é usada como código ou imagem de interface.
+- Chromium validou título HYBRD, cor do H, logotipos globais, fonte local e ausência de overflow em 320/390/1440px. Comparação da fonte confirmou alteração apenas de B/R e limites dos R compostos dependentes.

@@ -89,7 +89,7 @@ export function Storefront({ collection, collectionCategory, product, newOnly = 
       {notice && <div className="announcement-bar relative flex h-8 items-center justify-center bg-footer px-10 text-background"><p className="micro truncate text-[9px] md:text-[10px]">Prévia Ybrd / Vestir + Morar</p><Button variant="ghost" size="icon" className="absolute right-2 size-7 hover:bg-background/10 hover:text-background" aria-label="Fechar aviso" onClick={() => setNotice(false)}><X className="size-3" /></Button></div>}
       <header className="nav-shell relative">
         <div className="header-row site-width flex h-[76px] items-center justify-between gap-4">
-          <Link to="/" className="wordmark" aria-label={collection?.slug === 'ybrd-home' ? 'HYBRD início' : 'YBRD início'}><YbrdLogo brand={collection?.slug === 'ybrd-home' ? 'hybrd' : 'ybrd'} /></Link>
+          <Link to="/" className="wordmark" aria-label="YBRD início"><YbrdLogo /></Link>
           <StoreMenus panel={mega} onPanelChange={setMega} mobileOpen={drawer} onMobileChange={setDrawer} signedIn={!!user} onSelectProducts={value => { setOnlyNew(value); setDepartment('Todos'); setCategory(null); setCurrent(1); }} onAgenda={() => setInfo('Agenda')} />
           <div className="flex items-center gap-1 md:gap-3">
             <Button variant="ghost" size="icon" aria-label="Buscar" title="Buscar" onClick={() => { setMega(null); setUtility('search'); }}><Search className="size-[18px]" /></Button>
@@ -108,7 +108,7 @@ export function Storefront({ collection, collectionCategory, product, newOnly = 
           <div className="collection-intro">
             <Link to="/" className="micro inline-flex items-center gap-2"><ArrowLeft className="size-3.5" /> Voltar à home</Link>
             <p className="micro mt-5 text-muted-foreground">{collection.code} / {collection.label}</p>
-            <h1 className="collection-title mt-2">{collection.title}</h1>
+            <h1 className="collection-title mt-2">{collection.slug === 'ybrd-home' ? <YbrdLogo brand="hybrd" /> : collection.title}</h1>
             <p className="mt-3 max-w-sm text-sm text-muted-foreground">{collection.description}</p>
           </div>
           <div className="campaign-frame"><WindowBar title={collection.code} />
@@ -122,7 +122,7 @@ export function Storefront({ collection, collectionCategory, product, newOnly = 
             <div className="site-width relative flex items-center justify-between">
               <div>
                 <p className="micro mb-2 text-muted-foreground">Um futuro em comum / São Paulo, Brasil</p>
-                <h1 className="hero-brand"><YbrdLogo /><span className="text-signal">.</span></h1>
+                <h1 className="hero-brand"><YbrdLogo /></h1>
                 <p className="hero-subtitle mt-2 font-mono text-[11px]">Roupas e objetos para quem veste e mora com a mesma atitude.</p>
                 <nav className="hero-shortcuts mt-3 flex flex-wrap gap-2" aria-label="Explorar departamentos">
                   {CAMPAIGNS.map((c, index) => <Button asChild key={c.slug} variant={index === 0 ? 'glossy' : 'ghost'} className={`micro rounded-full px-4 ${index === 0 ? '' : 'border border-foreground'}`}>
@@ -150,7 +150,7 @@ export function Storefront({ collection, collectionCategory, product, newOnly = 
                 <div className="campaign-caption">
                   <div>
                     <p className="micro mb-2">{c.label} <span className="text-blue">↗</span></p>
-                    <h2>{c.title}</h2>
+                    <h2 className="brand-display">{c.slug === 'ybrd-home' ? <YbrdLogo brand="hybrd" /> : c.title}</h2>
                   </div>
                   <div className="campaign-actions flex flex-wrap gap-2">
                     <Button asChild size="sm" className="micro rounded-full px-5"><Link to="/colecoes/$colecao" params={{ colecao: c.slug }} search={{}} aria-label={`Comprar ${c.title}`}>Comprar <ArrowUpRight /></Link></Button>
@@ -195,7 +195,7 @@ export function Storefront({ collection, collectionCategory, product, newOnly = 
       </section>
       </>}
     </main>
-    <footer className="bg-footer text-background"><div className="site-width py-12"><div className="mb-10 flex items-end justify-between gap-6"><p className="wordmark footer-brand">YBRD</p><Button variant="ghost" className="micro text-background hover:bg-background/10 hover:text-background" aria-label="Voltar ao topo" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })}><span className="hidden sm:inline">Voltar ao topo</span><ArrowUp /></Button></div><div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.25fr_1fr]"><div className="grid grid-cols-2 gap-8 sm:grid-cols-4">{footerColumns.map(col => <div key={col.title}><p className="micro mb-4">{col.title}</p><ul className="space-y-2">{col.links.map(({ l, go }) => <li key={l}>{!isHome && col.title === 'Comprar' ? (
+    <footer className="bg-footer text-background"><div className="site-width py-12"><div className="mb-10 flex items-end justify-between gap-6"><p className="wordmark footer-brand"><YbrdLogo /></p><Button variant="ghost" className="micro text-background hover:bg-background/10 hover:text-background" aria-label="Voltar ao topo" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })}><span className="hidden sm:inline">Voltar ao topo</span><ArrowUp /></Button></div><div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.25fr_1fr]"><div className="grid grid-cols-2 gap-8 sm:grid-cols-4">{footerColumns.map(col => <div key={col.title}><p className="micro mb-4">{col.title}</p><ul className="space-y-2">{col.links.map(({ l, go }) => <li key={l}>{!isHome && col.title === 'Comprar' ? (
       <Button asChild variant="ghost" className="h-auto whitespace-normal p-0 text-left text-xs font-normal text-footer-muted hover:bg-transparent hover:text-background">
         {l === 'Tudo' ? <Link to="/" hash="comprar">Tudo</Link> : <Link to="/colecoes/$colecao" params={{ colecao: l === 'Vestir' ? CAMPAIGNS[0].slug : CAMPAIGNS[1].slug }} search={{}}>{l}</Link>}
       </Button>
