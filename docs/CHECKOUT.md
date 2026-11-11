@@ -24,3 +24,7 @@ A mudança mínima de catálogo é relacionar SKU e tamanho ao slug existente. C
 Configuração prevista: `SUPABASE_URL`, `YBRD_SUPABASE_SECRET_KEY`, `YBRD_SITE_ORIGIN`, `YBRD_CHECKOUT_ENABLED`, `YBRD_MELHOR_ENVIO_TOKEN`, `YBRD_MELHOR_ENVIO_SANDBOX`, `YBRD_MP_ACCESS_TOKEN`, `YBRD_MP_WEBHOOK_SECRET`, `YBRD_PAYMENT_MOCK`, `YBRD_EMAIL_API_KEY`, `YBRD_EMAIL_FROM`. Valores de frete, parcelamento e cupons vêm do banco. Nenhuma migração é aplicada em produção por este trabalho.
 
 O texto anexado termina na fase 6. As regras brasileiras de venda, privacidade, troca e devolução exigem dados reais da empresa e revisão antes de liberar pedidos. Um checkbox genérico não substitui políticas publicadas. O lint inicial apontou 935 erros e 10 avisos, quase todos de formatação. Essa linha de base foi registrada antes de editar código.
+
+## Fase 1 · Estoque e pedidos
+
+Migração `20261111010000_commerce.sql` cria o catálogo comercial, reservas, edições, pedidos e auditoria com RLS e permissões restritas. Reserva e confirmação bloqueiam as linhas em ordem determinística. A expiração libera o estoque e a confirmação idempotente numera as peças. O catálogo entra inativo, com estoque zero e medidas pendentes. Execute as migrações em um Supabase de teste antes de publicar e valide concorrência, expiração, RLS e reversão de transação. Nenhum banco de produção foi acessado.
