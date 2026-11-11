@@ -1,3 +1,11 @@
+import { CartContents } from "@/components/CartContents";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -21,8 +29,8 @@ import {
 import { CAMPAIGNS, EDITORIALS, type Campaign } from "@/lib/hybrid-editorial";
 import { SceneRing } from "@/components/SceneRing";
 import { LookArchive } from "@/components/LookArchive";
-import { MAX_PREVIEW_QUANTITY, useStorefrontCart } from "@/components/StorefrontCart";
-import { brl, previewMessage, PreviewPurchase, ProductPreview } from "@/components/ProductPreview";
+import { useStorefrontCart } from "@/components/StorefrontCart";
+import { brl, PreviewPurchase, ProductPreview } from "@/components/ProductPreview";
 import { useAccount } from "@/components/AccountProvider";
 import { installmentAmount } from "@/lib/utils";
 import {
@@ -40,13 +48,6 @@ import {
   Check,
 } from "lucide-react";
 
-const edition = (name: string) => {
-  let h = 7;
-  for (const ch of name) h = (h * 31 + ch.charCodeAt(0) * 17 + ch.charCodeAt(0) ** 2) % 7919;
-  const total = 20 + (h % 81);
-  const n = 1 + (h % total);
-  return `ED. ${String(n).padStart(3, "0")} / ${String(total).padStart(3, "0")}`;
-};
 const scrollTo = (id: string) =>
   document.getElementById(id)?.scrollIntoView({
     behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
@@ -84,7 +85,7 @@ export function Storefront({
   const [utility, setUtility] = useState<"search" | "cart" | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
-  const { cart, changeQuantity, remove } = useStorefrontCart();
+  const { cart, commerce } = useStorefrontCart();
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const [info, setInfo] = useState<string | null>(null);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -256,7 +257,9 @@ export function Storefront({
                 onClick={() => setUtility("cart")}
               >
                 <ShoppingBag className="size-[18px]" />
-                <span>({cartCount})</span>
+                <span key={cartCount} className="cart-count">
+                  ({cartCount})
+                </span>
               </Button>
               <Button
                 variant="ghost"
@@ -576,13 +579,44 @@ export function Storefront({
                           {p.name}
                         </Link>
                       </h3>
-                      <p className="micro text-muted-foreground">{edition(p.name)}</p>
+                      <p className="micro text-muted-foreground">
+                        {commerce.enabled
+                          ? (() => {
+                              const live = commerce.products.find((item) => item.slug === p.slug);
+                              return live?.available
+                                ? `Restam ${live.available} de ${live.editionTotal}`
+                                : "Esgotado";
+                            })()
+                          : "Prévia"}
+                      </p>
                       <p className="micro mt-2">
-                        <span className="bg-highlight px-1">{brl(p.price)}</span>
+                        <span className="bg-highlight px-1">
+                          {brl(
+                            commerce.products.find((item) => item.slug === p.slug)?.priceCentavos ??
+                              p.priceCentavos,
+                          )}
+                        </span>
                       </p>
                       <p className="mt-1 font-mono text-[11px] text-muted-foreground">
-                        Simulação: 6x de {brl(installmentAmount(p.price))}
+                        {!commerce.enabled &&
+                          `Simulação: 6x de ${brl(installmentAmount(p.priceCentavos))}`}
                       </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="micro mt-3 rounded-full"
+                        disabled={
+                          commerce.enabled &&
+                          !commerce.products.find((item) => item.slug === p.slug)?.available
+                        }
+                        onClick={() => openProduct(p)}
+                      >
+                        {commerce.enabled &&
+                        !commerce.products.find((item) => item.slug === p.slug)?.available
+                          ? "Esgotado"
+                          : "Adicionar à sacola"}
+                      </Button>
                     </article>
                   ))}
                 </div>
@@ -844,7 +878,7 @@ export function Storefront({
         </div>
       </footer>
       <Dialog
-        open={utility !== null}
+        open={utility === "search"}
         onOpenChange={(open) => {
           if (!open) setUtility(null);
         }}
@@ -889,7 +923,7 @@ export function Storefront({
                       <span className="text-sm">
                         {item.name}
                         <span className="micro mt-1 block text-muted-foreground">
-                          {brl(item.price)}
+                          {brl(item.priceCentavos)}
                         </span>
                       </span>
                       <ArrowUpRight className="ml-auto" />
@@ -903,99 +937,29 @@ export function Storefront({
               </div>
             </>
           )}
-          {utility === "cart" &&
-            (cart.length ? (
-              <>
-                <ul className="space-y-4">
-                  {cart.map((item) => (
-                    <li
-                      key={`${item.slug}:${item.size}`}
-                      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-border pb-3"
-                    >
-                      <img
-                        decoding="async"
-                        src={item.product.img}
-                        alt=""
-                        width={64}
-                        height={64}
-                        loading="lazy"
-                        className="size-12 object-contain sm:size-16"
-                      />
-                      <div className="min-w-0">
-                        <Link
-                          to="/produto/$produto"
-                          params={{ produto: item.slug }}
-                          onClick={() => setUtility(null)}
-                          className="text-sm hover:underline"
-                        >
-                          {item.product.name}
-                        </Link>
-                        <p className="micro text-muted-foreground">
-                          {item.size &&
-                            `${item.product.category === "Calçados" ? "Numeração" : "Tamanho"} ${item.size} · `}
-                          {brl(item.product.price)}
-                        </p>
-                        <div
-                          className="mt-2 inline-flex items-center rounded-md border border-border"
-                          role="group"
-                          aria-label={`Quantidade de ${item.product.name}${item.size ? `, ${item.size}` : ""}`}
-                        >
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-11"
-                            aria-label="Diminuir quantidade"
-                            disabled={item.quantity <= 1}
-                            onClick={() => changeQuantity(item, -1)}
-                          >
-                            <Minus />
-                          </Button>
-                          <span className="micro min-w-7 text-center" aria-live="polite">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-11"
-                            aria-label="Aumentar quantidade"
-                            disabled={item.quantity >= MAX_PREVIEW_QUANTITY}
-                            onClick={() => changeQuantity(item, 1)}
-                          >
-                            <Plus />
-                          </Button>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Remover ${item.product.name}${item.size ? `, ${item.size}` : ""}`}
-                        onClick={() => remove(item)}
-                      >
-                        <X />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-                <p className="micro flex justify-between gap-3">
-                  <span>Total da prévia</span>
-                  <span>
-                    {brl(
-                      cart.reduce((total, item) => total + item.product.price * item.quantity, 0),
-                    )}
-                  </span>
-                </p>
-                <p className="text-xs text-muted-foreground">{previewMessage}</p>
-              </>
-            ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Sua sacola está vazia.
-              </p>
-            ))}
         </DialogContent>
       </Dialog>
+      <Sheet
+        open={utility === "cart"}
+        onOpenChange={(open) => {
+          if (!open) setUtility(null);
+        }}
+      >
+        <SheetContent closeLabel="Fechar sacola" className="w-full overflow-y-auto sm:max-w-lg">
+          <SheetHeader className="mb-5">
+            <SheetTitle>Sua sacola</SheetTitle>
+            <SheetDescription>Vestir + Morar / Ybrd</SheetDescription>
+          </SheetHeader>
+          <CartContents onNavigate={() => setUtility(null)} />
+          <a
+            href="/sacola"
+            className="micro mt-4 inline-block underline"
+            onClick={() => setUtility(null)}
+          >
+            Abrir página da sacola
+          </a>
+        </SheetContent>
+      </Sheet>
       <Dialog
         open={selected !== null}
         onOpenChange={(open) => {

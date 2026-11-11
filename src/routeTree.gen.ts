@@ -18,6 +18,7 @@ import { Route as LogoLabRouteImport } from './routes/logo-lab'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as AuthenticatedMinhaContaRouteImport } from './routes/_authenticated/minha-conta'
 import { Route as ColecoesColecaoRouteImport } from './routes/colecoes/$colecao'
 import { Route as ProdutoProdutoRouteImport } from './routes/produto/$produto'
@@ -66,6 +67,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SacolaRoute = SacolaRouteImport.update({
+  id: '/sacola',
+  path: '/sacola',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMinhaContaRoute = AuthenticatedMinhaContaRouteImport.update({
   id: '/minha-conta',
   path: '/minha-conta',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sacola': typeof SacolaRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
   '/produto/$produto': typeof ProdutoProdutoRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sacola': typeof SacolaRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
   '/produto/$produto': typeof ProdutoProdutoRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sacola': typeof SacolaRoute
   '/_authenticated/minha-conta': typeof AuthenticatedMinhaContaRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
   '/produto/$produto': typeof ProdutoProdutoRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/reset-password'
+    | '/sacola'
     | '/minha-conta'
     | '/colecoes/$colecao'
     | '/produto/$produto'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/reset-password'
+    | '/sacola'
     | '/minha-conta'
     | '/colecoes/$colecao'
     | '/produto/$produto'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/reset-password'
+    | '/sacola'
     | '/_authenticated/minha-conta'
     | '/colecoes/$colecao'
     | '/produto/$produto'
@@ -176,6 +188,7 @@ export interface RootRouteChildren {
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SacolaRoute: typeof SacolaRoute
   ColecoesColecaoRoute: typeof ColecoesColecaoRoute
   ProdutoProdutoRoute: typeof ProdutoProdutoRoute
 }
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sacola': {
+      id: '/sacola'
+      path: '/sacola'
+      fullPath: '/sacola'
+      preLoaderRoute: typeof SacolaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/minha-conta': {
       id: '/_authenticated/minha-conta'
       path: '/minha-conta'
@@ -290,6 +310,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SacolaRoute: SacolaRoute,
   ColecoesColecaoRoute: ColecoesColecaoRoute,
   ProdutoProdutoRoute: ProdutoProdutoRoute,
 }

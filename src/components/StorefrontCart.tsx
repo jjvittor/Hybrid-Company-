@@ -1,35 +1,41 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { z } from "zod";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { useAccount } from "@/components/AccountProvider";
 import { PRODUCTS, productSizes, type Product } from "@/lib/hybrid-catalog";
-
-// Keep storage validation compatible with the storefront CSP.
-z.config({ jitless: true });
+import {
+  cartEntry,
+  commerceRequest,
+  defaultCommerce,
+  type CartEntry,
+  type CartChange,
+  type CommerceStatus,
+  type CartReply,
+} from "@/lib/commerce";
 
 export const PREVIEW_CART_KEY = "ybrd-preview-cart-v1";
 export const MAX_PREVIEW_QUANTITY = 99;
-const entrySchema = z.object({
-  slug: z.string().max(80),
-  size: z.string().max(8),
-  quantity: z.number().int().min(1).max(MAX_PREVIEW_QUANTITY),
-});
-type Entry = z.infer<typeof entrySchema>;
-type CartItem = Entry & { product: Product };
+const mergeKey = "ybrd-cart-merge-v1";
 const catalog = new Map(PRODUCTS.map((product) => [product.slug, product]));
-
 function validSize(product: Product, size: string) {
   const options = productSizes(product);
   return options.length ? options.includes(size) : size === "";
 }
-
-function readEntries(): Entry[] | undefined {
+function readEntries(): CartEntry[] | undefined {
   try {
-    const raw = window.localStorage.getItem(PREVIEW_CART_KEY);
+    const raw = localStorage.getItem(PREVIEW_CART_KEY);
     if (!raw || raw.length > 8192) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    const unique = new Map<string, Entry>();
-    for (const value of parsed) {
-      const result = entrySchema.safeParse(value);
+    const unique = new Map<string, CartEntry>();
+    for (const value of parsed.slice(0, 40)) {
+      const result = cartEntry.safeParse(value);
       if (!result.success) continue;
       const entry = result.data;
       const product = catalog.get(entry.slug);
@@ -41,83 +47,221 @@ function readEntries(): Entry[] | undefined {
     return undefined;
   }
 }
-
+function writeEntries(entries: CartEntry[]) {
+  try {
+    localStorage.setItem(PREVIEW_CART_KEY, JSON.stringify(entries));
+    return true;
+  } catch {
+    return false;
+  }
+}
+type CartItem = CartEntry & { product: Product; stock: number };
 const CartContext = createContext<{
   cart: CartItem[];
+  commerce: CommerceStatus;
+  notices: string[];
+  busy: boolean;
+  subtotalCentavos: number;
+  refresh: () => Promise<void>;
   add: (product: Product, size: string) => void;
-  changeQuantity: (item: Entry, delta: number) => void;
-  remove: (item: Entry) => void;
+  changeQuantity: (item: CartEntry, delta: number) => void;
+  remove: (item: CartEntry) => void;
+  clear: () => void;
 } | null>(null);
 
 export function StorefrontCartProvider({ children }: { children: ReactNode }) {
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const latest = useRef<Entry[]>([]);
-  const writable = useRef(true);
-  const sync = (value: Entry[]) => {
+  const { user } = useAccount();
+  const email = user?.email ?? null;
+  const [entries, setEntries] = useState<CartEntry[]>([]);
+  const [commerce, setCommerce] = useState(defaultCommerce);
+  const [notices, setNotices] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const latest = useRef<CartEntry[]>([]);
+  const guestItems = useRef<CartEntry[]>([]);
+  const storageWritable = useRef(true);
+  const guestRevision = useRef(0);
+  const active = useRef(defaultCommerce);
+  const account = useRef(email);
+  const requests = useRef(Promise.resolve());
+  const mergeId = useRef<string | undefined>(undefined);
+  account.current = email;
+  const sync = useCallback((value: CartEntry[]) => {
     latest.current = value;
     setEntries(value);
-  };
-  useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (!writable.current || (event.key !== PREVIEW_CART_KEY && event.key !== null)) return;
-      const stored = readEntries();
-      if (stored) sync(stored);
-    };
-    const stored = readEntries();
-    if (stored) sync(stored);
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  const updateCommerce = useCallback((status: CommerceStatus) => {
+    active.current = status;
+    setCommerce(status);
   }, []);
 
-  const update = (apply: (items: Entry[]) => Entry[]) => {
-    const next = apply((writable.current ? readEntries() : undefined) ?? latest.current);
-    if (writable.current) {
-      try {
-        window.localStorage.setItem(PREVIEW_CART_KEY, JSON.stringify(next));
-      } catch {
-        writable.current = false;
+  const saveGuest = useCallback((items: CartEntry[]) => {
+    guestItems.current = items;
+    guestRevision.current += 1;
+    if (storageWritable.current) storageWritable.current = writeEntries(items);
+  }, []);
+  const loadGuest = useCallback(
+    () => (storageWritable.current ? readEntries() : undefined) ?? guestItems.current,
+    [],
+  );
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (!account.current && (event.key === PREVIEW_CART_KEY || event.key === null)) {
+        const stored = readEntries();
+        if (stored && storageWritable.current) {
+          guestItems.current = stored;
+          guestRevision.current += 1;
+          sync(stored);
+        }
       }
+    };
+    const stored = readEntries();
+    if (stored && storageWritable.current) {
+      guestItems.current = stored;
+      guestRevision.current += 1;
+      sync(stored);
     }
-    sync(next);
-  };
-  const matches = (left: Entry, right: Pick<Entry, "slug" | "size">) =>
-    left.slug === right.slug && left.size === right.size;
-  const add = (product: Product, size: string) => {
-    if (!validSize(product, size)) return;
-    const entry = { slug: product.slug, size, quantity: 1 };
-    update((items) =>
-      items.some((item) => matches(item, entry))
-        ? items.map((item) =>
-            matches(item, entry)
-              ? { ...item, quantity: Math.min(MAX_PREVIEW_QUANTITY, item.quantity + 1) }
-              : item,
-          )
-        : [...items, entry],
-    );
-  };
-  const changeQuantity = (entry: Entry, delta: number) =>
-    update((items) =>
-      items.map((item) =>
-        matches(item, entry)
-          ? {
-              ...item,
-              quantity: Math.max(1, Math.min(MAX_PREVIEW_QUANTITY, item.quantity + delta)),
+    const controller = new AbortController();
+    void commerceRequest<CommerceStatus>("catalogo", {}, controller.signal)
+      .then(updateCommerce)
+      .catch(() => {});
+    window.addEventListener("storage", onStorage);
+    return () => {
+      controller.abort();
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [sync, updateCommerce]);
+
+  const requestCart = useCallback(
+    (change?: CartChange, importGuest = false) => {
+      const owner = account.current;
+      if (!active.current.enabled) return Promise.resolve();
+      const task = requests.current.then(async () => {
+        if (account.current !== owner) return;
+        setBusy(true);
+        try {
+          const guest = importGuest ? loadGuest() : [];
+          const revision = guestRevision.current;
+          let key: string | undefined;
+          if (owner && guest.length) {
+            try {
+              key = localStorage.getItem(mergeKey) ?? crypto.randomUUID();
+              localStorage.setItem(mergeKey, key);
+            } catch {
+              key = mergeId.current ?? crypto.randomUUID();
             }
-          : item,
-      ),
-    );
-  const remove = (entry: Entry) => update((items) => items.filter((item) => !matches(item, entry)));
+            mergeId.current = key;
+          }
+          const previous = active.current;
+          const data = await commerceRequest<CartReply & { catalog: CommerceStatus }>("sacola", {
+            items: owner ? guest : latest.current,
+            account: Boolean(owner),
+            mergeId: key,
+            change,
+          });
+          if (account.current !== owner || (!owner && guestRevision.current !== revision)) return;
+          const changes = data.items.some((item) => {
+            const a = previous.products.find((p) => p.slug === item.slug);
+            const b = data.catalog.products.find((p) => p.slug === item.slug);
+            return a && b && a.priceCentavos !== b.priceCentavos;
+          });
+          setNotices([...new Set([...data.notices, ...(changes ? ["Preço atualizado."] : [])])]);
+          updateCommerce(data.catalog);
+          sync(data.items);
+          if (!owner) saveGuest(data.items);
+          if (key) {
+            saveGuest([]);
+            try {
+              localStorage.removeItem(mergeKey);
+            } catch {
+              /* Storage can be unavailable. */
+            }
+            mergeId.current = undefined;
+          }
+        } catch {
+          if (account.current === owner)
+            setNotices(["Não foi possível atualizar a sacola. Tente novamente."]);
+        } finally {
+          setBusy(false);
+        }
+      });
+      requests.current = task;
+      return task;
+    },
+    [sync, updateCommerce, loadGuest, saveGuest],
+  );
+
+  useEffect(() => {
+    if (!commerce.enabled) return;
+    sync(email ? [] : loadGuest());
+    void requestCart(undefined, Boolean(email));
+  }, [commerce.enabled, email, requestCart, sync, loadGuest]);
+
+  const update = (change: CartChange) => {
+    if (commerce.enabled && email) {
+      void requestCart(change);
+      return;
+    }
+    const items = loadGuest();
+    const item = items.find((x) => x.slug === change.slug && x.size === change.size);
+    const product = commerce.products.find((p) => p.slug === change.slug);
+    const maximum = commerce.enabled
+      ? (product?.variants.find((v) => v.size === change.size)?.stock ?? 0)
+      : MAX_PREVIEW_QUANTITY;
+    const quantity =
+      change.delta === 0
+        ? 0
+        : Math.min(maximum, 99, Math.max(1, (item?.quantity ?? 0) + change.delta));
+    const next = items.filter((x) => x !== item);
+    if (quantity > 0 && next.length < 40)
+      next.push({ slug: change.slug, size: change.size, quantity });
+    saveGuest(next);
+    sync(next);
+    if (commerce.enabled) void requestCart();
+  };
   const cart = entries.flatMap((entry) => {
     const product = catalog.get(entry.slug);
-    return product ? [{ ...entry, product }] : [];
+    const live = commerce.products.find((p) => p.slug === entry.slug);
+    return product
+      ? [
+          {
+            ...entry,
+            product: { ...product, priceCentavos: live?.priceCentavos ?? product.priceCentavos },
+            stock: commerce.enabled
+              ? (live?.variants.find((v) => v.size === entry.size)?.stock ?? 0)
+              : 99,
+          },
+        ]
+      : [];
   });
   return (
-    <CartContext.Provider value={{ cart, add, changeQuantity, remove }}>
+    <CartContext.Provider
+      value={{
+        cart,
+        commerce,
+        notices,
+        busy,
+        subtotalCentavos: cart.reduce(
+          (sum, item) => sum + item.quantity * item.product.priceCentavos,
+          0,
+        ),
+        refresh: requestCart,
+        add: (product, size) => {
+          if (validSize(product, size)) update({ slug: product.slug, size, delta: 1 });
+        },
+        changeQuantity: (item, delta) =>
+          update({ slug: item.slug, size: item.size, delta: delta > 0 ? 1 : -1 }),
+        remove: (item) => update({ slug: item.slug, size: item.size, delta: 0 }),
+        clear: () => {
+          if (!email) saveGuest([]);
+          sync([]);
+        },
+      }}
+    >
       {children}
     </CartContext.Provider>
   );
 }
-
 export function useStorefrontCart() {
   const context = useContext(CartContext);
   if (!context) throw new Error("StorefrontCartProvider is required");

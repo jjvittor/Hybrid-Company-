@@ -12,7 +12,7 @@ export type Product = {
   slug: string;
   description: string;
   name: string;
-  price: number;
+  priceCentavos: number;
   img: string;
   cat: Department;
   category: string;
@@ -23,7 +23,7 @@ export const PRODUCTS: Product[] = [
     slug: "camiseta-heavy-box-off-white",
     description: "Camiseta off-white de silhueta box, com proporções amplas.",
     name: "Camiseta Heavy Box Off-White",
-    price: 189,
+    priceCentavos: 18900,
     img: tee,
     cat: "Vestir",
     category: "Camisetas",
@@ -33,7 +33,7 @@ export const PRODUCTS: Product[] = [
     slug: "poltrona-tubular-verde",
     description: "Poltrona com estrutura tubular verde e assento claro.",
     name: "Poltrona Tubular Verde",
-    price: 2490,
+    priceCentavos: 249000,
     img: chair,
     cat: "Morar",
     category: "Mobiliário",
@@ -43,7 +43,7 @@ export const PRODUCTS: Product[] = [
     slug: "moletom-concreto-verde",
     description: "Moletom verde com capuz e bolso frontal.",
     name: "Moletom Concreto Verde",
-    price: 429,
+    priceCentavos: 42900,
     img: hoodie,
     cat: "Vestir",
     category: "Moletons",
@@ -52,7 +52,7 @@ export const PRODUCTS: Product[] = [
     slug: "vaso-forma-areia",
     description: "Vaso em tom areia, com corpo arredondado e alça lateral.",
     name: "Vaso Forma Areia",
-    price: 249,
+    priceCentavos: 24900,
     img: vase,
     cat: "Morar",
     category: "Objetos",
@@ -62,7 +62,7 @@ export const PRODUCTS: Product[] = [
     slug: "calca-cargo-wide",
     description: "Calça cargo de perna ampla, com bolsos laterais.",
     name: "Calça Cargo Wide",
-    price: 399,
+    priceCentavos: 39900,
     img: cargo,
     cat: "Vestir",
     category: "Calças",
@@ -71,7 +71,7 @@ export const PRODUCTS: Product[] = [
     slug: "mesa-lateral-concreto",
     description: "Mesa lateral de linhas simples e tom de concreto.",
     name: "Mesa Lateral Concreto",
-    price: 890,
+    priceCentavos: 89000,
     img: table,
     cat: "Morar",
     category: "Mobiliário",
@@ -80,7 +80,7 @@ export const PRODUCTS: Product[] = [
     slug: "bone-six-panel-verde",
     description: "Boné verde de seis painéis com aba curva.",
     name: "Boné Six Panel Verde",
-    price: 159,
+    priceCentavos: 15900,
     img: cap,
     cat: "Vestir",
     category: "Bonés",
@@ -89,7 +89,7 @@ export const PRODUCTS: Product[] = [
     slug: "tenis-hybrid-runner",
     description: "Tênis com silhueta inspirada em modelos de corrida.",
     name: "Tênis Hybrid Runner",
-    price: 699,
+    priceCentavos: 69900,
     img: sneaker,
     cat: "Vestir",
     category: "Calçados",
@@ -114,7 +114,7 @@ export const SHOP_CATEGORIES = CATEGORIES.filter((category) =>
 export const SET_PRODUCTS = PRODUCTS.filter(
   (p) => p.category === "Camisetas" || p.category === "Objetos",
 );
-export const SET_TOTAL = SET_PRODUCTS.reduce((total, p) => total + p.price, 0);
+export const SET_TOTAL = SET_PRODUCTS.reduce((total, p) => total + p.priceCentavos, 0);
 
 export function productSizes(product: Product): readonly string[] {
   if (product.cat === "Morar" || product.category === "Bonés") return [];

@@ -466,3 +466,7 @@ a:hover { color: var(--signal); }
 .logo-lab-recommendation p { margin-block: 8px; }
 .logo-lab :is(a, [tabindex]):focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 @media (max-width: 600px) { .logo-lab { padding: 16px; } .logo-lab-tone { padding: 16px; } }
+
+.cart-count { display: inline-block; animation: cart-count-pop 220ms ease-out; }
+@keyframes cart-count-pop { 45% { transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .cart-count { animation: none; } }

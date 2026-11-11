@@ -8,8 +8,8 @@ import { CAMPAIGNS } from "@/lib/hybrid-editorial";
 
 export const previewMessage =
   "Prévia da coleção. Pedidos e pagamentos ainda não estão disponíveis.";
-export const brl = (amount: number) =>
-  amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+import { brl } from "@/lib/commerce";
+export { brl };
 
 export function PreviewPurchase({
   product,
@@ -20,14 +20,19 @@ export function PreviewPurchase({
   onAdded: () => void;
   quickView?: boolean;
 }) {
-  const { add } = useStorefrontCart();
+  const { add, commerce, busy } = useStorefrontCart();
   const [size, setSize] = useState("");
   const sizes = productSizes(product);
+  const live = commerce.products.find((item) => item.slug === product.slug);
+  const price = live?.priceCentavos ?? product.priceCentavos;
+  const soldOut = commerce.enabled && !live?.available;
+  const available =
+    !commerce.enabled || Boolean(live?.variants.find((item) => item.size === size)?.stock);
   const label = product.category === "Calçados" ? "Numeração" : "Tamanho";
 
   return (
     <>
-      <p className={quickView ? "micro" : "font-mono text-lg"}>{brl(product.price)}</p>
+      <p className={quickView ? "micro" : "font-mono text-lg"}>{brl(price)}</p>
       {sizes.length > 0 && (
         <label className="flex flex-wrap items-center justify-between gap-3 text-sm">
           {label}
@@ -40,7 +45,13 @@ export function PreviewPurchase({
               Selecione
             </option>
             {sizes.map((option) => (
-              <option key={option} value={option}>
+              <option
+                key={option}
+                value={option}
+                disabled={
+                  commerce.enabled && !live?.variants.find((item) => item.size === option)?.stock
+                }
+              >
                 {option}
               </option>
             ))}
@@ -48,20 +59,28 @@ export function PreviewPurchase({
         </label>
       )}
       <div className={quickView ? "product-purchase-bar contents" : "block"}>
-        {quickView && <span className="purchase-price micro hidden">{brl(product.price)}</span>}
+        {quickView && <span className="purchase-price micro hidden">{brl(price)}</span>}
         <Button
           type="button"
           className="min-h-11 w-full"
-          disabled={sizes.length > 0 && !sizes.includes(size)}
+          disabled={busy || soldOut || !available || (sizes.length > 0 && !sizes.includes(size))}
           onClick={() => {
             add(product, size);
             onAdded();
           }}
         >
-          Adicionar à sacola <ShoppingBag />
+          {soldOut ? "Esgotado" : "Adicionar à sacola"} <ShoppingBag />
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">{previewMessage}</p>
+      {commerce.enabled ? (
+        live?.available ? (
+          <p className="micro">
+            Restam {live.available} de {live.editionTotal}
+          </p>
+        ) : null
+      ) : (
+        <p className="text-xs text-muted-foreground">{previewMessage}</p>
+      )}
     </>
   );
 }

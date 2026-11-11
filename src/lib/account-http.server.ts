@@ -644,3 +644,23 @@ export async function handleAccount(request: Request, action: string) {
     return reply({ message: unavailable }, 503);
   }
 }
+
+/** Uses the same signed token and revocation record as the account gateway. */
+export async function commerceAccount(request: Request) {
+  const token = readCookie(request, cookieName("login", "at"));
+  if (!token) return null;
+  const settings = config();
+  const admin = backend(settings);
+  const { data, error } = await admin.auth.getClaims(token);
+  const claims = validClaims.safeParse(data?.claims);
+  if (error || !claims.success) throw new AccountError(401, "Entre novamente na sua conta.");
+  const { sub, session_id: sessionId, aal } = claims.data;
+  const access = await rpc(admin, "ybrd_session_access", {
+    p_id: sessionId,
+    p_user: sub,
+    p_purpose: "account",
+  });
+  if (!access || (access === "mfa" && aal !== "aal2"))
+    throw new AccountError(401, "Entre novamente na sua conta.");
+  return { id: sub, client: backend(settings, token) };
+}

@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function installmentAmount(price: number, count = 6) {
-  return price / count;
+  return Math.ceil(price / count);
 }
 
 export function showMobileChat(scrollY: number) {

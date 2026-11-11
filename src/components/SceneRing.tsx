@@ -1,3 +1,4 @@
+import { brl } from "@/lib/commerce";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link } from "@tanstack/react-router";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -49,8 +50,6 @@ type DragState = {
   moved: boolean;
   pointer: number;
 };
-const money = (amount: number) =>
-  amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export function SceneRing({ onProductSelect }: { onProductSelect?: (product: Product) => void }) {
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -342,7 +341,7 @@ export function SceneRing({ onProductSelect }: { onProductSelect?: (product: Pro
                             }
                           >
                             <p>{activePoint.product.name}</p>
-                            <p className="micro">{money(activePoint.product.price)}</p>
+                            <p className="micro">{brl(activePoint.product.priceCentavos)}</p>
                             <Link
                               to="/"
                               hash={`produto-${activePoint.product.slug}`}

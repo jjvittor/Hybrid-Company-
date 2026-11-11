@@ -28,3 +28,7 @@ O texto anexado termina na fase 6. As regras brasileiras de venda, privacidade, 
 ## Fase 1 · Estoque e pedidos
 
 Migração `20261111010000_commerce.sql` cria o catálogo comercial, reservas, edições, pedidos e auditoria com RLS e permissões restritas. Reserva e confirmação bloqueiam as linhas em ordem determinística. A expiração libera o estoque e a confirmação idempotente numera as peças. O catálogo entra inativo, com estoque zero e medidas pendentes. Execute as migrações em um Supabase de teste antes de publicar e valide concorrência, expiração, RLS e reversão de transação. Nenhum banco de produção foi acessado.
+
+## Fase 2 · Sacola
+
+A página `/sacola` e o painel lateral compartilham o mesmo componente. Visitantes mantêm a sacola versionada no navegador, com fallback em memória. Contas mesclam os itens no banco uma vez por identificador de importação. O servidor limita quantidades, atualiza preços em centavos e avisa sobre itens indisponíveis. A prévia continua acessível com vendas desativadas. A ligação de frete e cupom segue nas próximas fases. Lint, typecheck, 38 testes e build passaram.
