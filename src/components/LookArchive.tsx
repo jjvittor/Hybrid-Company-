@@ -20,7 +20,7 @@ export function LookArchive() {
     return () => window.clearTimeout(timer);
   }, [open]);
 
-  return <section className="look-archive site-width pb-14" aria-label="Looks da coleção">
+  return <section id="arquivo-de-looks" className="look-archive site-width pb-14" aria-label="Looks da coleção">
     <div className="section-label"><p className="micro">[ Em movimento ]</p><p className="micro text-muted-foreground">Arquivo de looks / 01–{String(LOOKS.length).padStart(2, '0')}</p></div>
     <div className={`look-index ${open !== null ? 'has-open-look' : ''}`}>
       {LOOKS.map((image, i) => {
