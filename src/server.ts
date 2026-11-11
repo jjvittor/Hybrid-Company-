@@ -57,8 +57,15 @@ export default {
         const headers = new Headers(request.headers);
         headers.set(nonceHeader, nonce);
         const handler = await getServerEntry();
+        // Vite can pass a proxied Request across its SSR boundary. Rebuild from
+        // public fields so Node's constructor does not read private state on it.
+        const forwarded = new Request(request.url, {
+          method: request.method,
+          headers,
+          ...(request.body ? { body: request.body, duplex: "half" as const } : {}),
+        });
         response = await normalizeCatastrophicSsrResponse(
-          await handler.fetch(new Request(request, { headers }), env, ctx),
+          await handler.fetch(forwarded, env, ctx),
         );
       }
     } catch {
