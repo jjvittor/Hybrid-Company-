@@ -69,13 +69,14 @@ declare o public.orders; price jsonb; i record;
   owner text := p_input->>'actor'; customer text := p_input->>'customer';
   buyer uuid := (p_input->>'user')::uuid; idem uuid := (p_input->>'idempotencia')::uuid;
   method text := p_input->>'metodo'; parts integer := (p_input->>'parcelas')::integer;
-  shipping jsonb := p_input->'frete'; expires timestamptz;
+  shipping jsonb := p_input->'frete'; expires timestamptz; buyer_cart uuid;
 begin
-  perform pg_advisory_xact_lock(hashtextextended('cart:'||owner||':'||idem::text,0));
+  perform pg_advisory_xact_lock(hashtextextended('actor:'||owner,0));
   select * into o from public.orders where actor_hash=owner and idempotencia=idem;
   if found then return jsonb_build_object('id',o.id,'numero',o.numero,'status',o.status,'repetido',true); end if;
   perform pg_advisory_xact_lock(hashtextextended('customer:'||customer,0));
   if exists(select 1 from public.orders where customer_hash=customer and status='aguardando_pagamento' and expira_em>now()) then raise exception 'commerce_pending'; end if;
+  if buyer is not null then select id into buyer_cart from public.carts where user_id=buyer for update; end if;
   price := public.commerce_price(p_input->'items',(shipping->>'precoCentavos')::bigint,p_input->>'cupom',customer,method);
   if price <> p_input->'expected' then raise exception 'commerce_price_changed'; end if;
   if parts not between 1 and (price->>'parcelas_maximas')::integer then raise exception 'commerce_installments'; end if;
@@ -97,7 +98,8 @@ begin
       and (select count(*) from public.addresses where user_id=buyer)<20 then
       insert into public.addresses(user_id,endereco) values(buyer,o.endereco);
     end if;
-    delete from public.cart_items ci using public.carts ca where ci.cart_id=ca.id and ca.user_id=buyer and ci.variant_id in (select variant_id from public.order_items where order_id=o.id);
+    delete from public.cart_items ci using public.order_items oi where ci.cart_id=buyer_cart and oi.order_id=o.id and ci.variant_id=oi.variant_id and ci.quantidade<=oi.quantidade;
+    update public.cart_items ci set quantidade=ci.quantidade-oi.quantidade from public.order_items oi where ci.cart_id=buyer_cart and oi.order_id=o.id and ci.variant_id=oi.variant_id;
   end if;
   return jsonb_build_object('id',o.id,'numero',o.numero,'status',o.status,'repetido',false);
 end $$;

@@ -153,7 +153,7 @@ a:hover { color: var(--signal); }
 .product-card { min-width: 0; scroll-snap-align: start; }
 .product-stage { position: relative; background: var(--card); aspect-ratio: 4/5; border: 1px solid var(--chrome-low); overflow: hidden; }
 .product-cutout,.product-context { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .25s ease; }
-.product-cutout { padding: 28px; object-fit: contain; }
+.product-cutout { object-fit: cover; }
 .product-context { object-fit: cover; opacity: 0; }
 .product-card:hover .product-context, .product-card:focus-within .product-context { opacity: 1; }
 .product-card:has(.product-context):hover .product-cutout, .product-card:has(.product-context):focus-within .product-cutout { opacity: 0; }
@@ -196,7 +196,7 @@ a:hover { color: var(--signal); }
  .showcase-arrows { display: none; }
  .product-track { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; overflow: visible; scroll-snap-type: none; }
  .product-card h3 { min-height: 40px; overflow-wrap: anywhere; }
- .product-card .product-cutout { padding: 14px; }
+
  .product-card > div:first-child { gap: 4px; }
  .product-card > div:first-child .micro { font-size: 10px; }
  .editorial-grid > article { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(36px, auto) minmax(48px, auto) auto; gap: 8px; align-content: start; text-align: left; min-width: 0; }

@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { handleCommerce } from "./lib/commerce-http.server";
 import { handleAccount } from "./lib/account-http.server";
 import { nonceHeader, securityHeaders } from "./lib/security-headers";
+import { storefrontSitemap } from "./lib/sitemap.server";
 import { renderErrorPage } from "./lib/error-page";
 
 type ServerEntry = {
@@ -52,7 +53,9 @@ export default {
     const url = new URL(request.url);
     let response: Response;
     try {
-      if (url.pathname.startsWith("/api/conta/")) {
+      if (url.pathname === "/sitemap.xml" && request.method === "GET") {
+        response = storefrontSitemap(url);
+      } else if (url.pathname.startsWith("/api/conta/")) {
         response = await handleAccount(request, url.pathname.slice("/api/conta/".length));
       } else if (url.pathname.startsWith("/api/loja/")) {
         response = await handleCommerce(request, url.pathname.slice("/api/loja/".length), ctx);

@@ -22,8 +22,10 @@ import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SacolaRouteImport } from './routes/sacola'
 import { Route as AuthenticatedMinhaContaRouteImport } from './routes/_authenticated/minha-conta'
+import { Route as AdminPedidosRouteImport } from './routes/admin/pedidos'
 import { Route as ColecoesColecaoRouteImport } from './routes/colecoes/$colecao'
 import { Route as ProdutoProdutoRouteImport } from './routes/produto/$produto'
+import { Route as PedidoIdConfirmadoRouteImport } from './routes/pedido/$id/confirmado'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -89,6 +91,11 @@ const AuthenticatedMinhaContaRoute = AuthenticatedMinhaContaRouteImport.update({
   path: '/minha-conta',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AdminPedidosRoute = AdminPedidosRouteImport.update({
+  id: '/admin/pedidos',
+  path: '/admin/pedidos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ColecoesColecaoRoute = ColecoesColecaoRouteImport.update({
   id: '/colecoes/$colecao',
   path: '/colecoes/$colecao',
@@ -97,6 +104,11 @@ const ColecoesColecaoRoute = ColecoesColecaoRouteImport.update({
 const ProdutoProdutoRoute = ProdutoProdutoRouteImport.update({
   id: '/produto/$produto',
   path: '/produto/$produto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PedidoIdConfirmadoRoute = PedidoIdConfirmadoRouteImport.update({
+  id: '/pedido/$id/confirmado',
+  path: '/pedido/$id/confirmado',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -113,8 +125,10 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
+  '/admin/pedidos': typeof AdminPedidosRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
   '/produto/$produto': typeof ProdutoProdutoRoute
+  '/pedido/$id/confirmado': typeof PedidoIdConfirmadoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -129,8 +143,10 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/minha-conta': typeof AuthenticatedMinhaContaRoute
+  '/admin/pedidos': typeof AdminPedidosRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
   '/produto/$produto': typeof ProdutoProdutoRoute
+  '/pedido/$id/confirmado': typeof PedidoIdConfirmadoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -147,8 +163,10 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sacola': typeof SacolaRoute
   '/_authenticated/minha-conta': typeof AuthenticatedMinhaContaRoute
+  '/admin/pedidos': typeof AdminPedidosRoute
   '/colecoes/$colecao': typeof ColecoesColecaoRoute
   '/produto/$produto': typeof ProdutoProdutoRoute
+  '/pedido/$id/confirmado': typeof PedidoIdConfirmadoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -165,8 +183,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sacola'
     | '/minha-conta'
+    | '/admin/pedidos'
     | '/colecoes/$colecao'
     | '/produto/$produto'
+    | '/pedido/$id/confirmado'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -181,8 +201,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sacola'
     | '/minha-conta'
+    | '/admin/pedidos'
     | '/colecoes/$colecao'
     | '/produto/$produto'
+    | '/pedido/$id/confirmado'
   id:
     | '__root__'
     | '/'
@@ -198,8 +220,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sacola'
     | '/_authenticated/minha-conta'
+    | '/admin/pedidos'
     | '/colecoes/$colecao'
     | '/produto/$produto'
+    | '/pedido/$id/confirmado'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -215,8 +239,10 @@ export interface RootRouteChildren {
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SacolaRoute: typeof SacolaRoute
+  AdminPedidosRoute: typeof AdminPedidosRoute
   ColecoesColecaoRoute: typeof ColecoesColecaoRoute
   ProdutoProdutoRoute: typeof ProdutoProdutoRoute
+  PedidoIdConfirmadoRoute: typeof PedidoIdConfirmadoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -312,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMinhaContaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/admin/pedidos': {
+      id: '/admin/pedidos'
+      path: '/admin/pedidos'
+      fullPath: '/admin/pedidos'
+      preLoaderRoute: typeof AdminPedidosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/colecoes/$colecao': {
       id: '/colecoes/$colecao'
       path: '/colecoes/$colecao'
@@ -324,6 +357,13 @@ declare module '@tanstack/react-router' {
       path: '/produto/$produto'
       fullPath: '/produto/$produto'
       preLoaderRoute: typeof ProdutoProdutoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pedido/$id/confirmado': {
+      id: '/pedido/$id/confirmado'
+      path: '/pedido/$id/confirmado'
+      fullPath: '/pedido/$id/confirmado'
+      preLoaderRoute: typeof PedidoIdConfirmadoRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -353,8 +393,10 @@ const rootRouteChildren: RootRouteChildren = {
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SacolaRoute: SacolaRoute,
+  AdminPedidosRoute: AdminPedidosRoute,
   ColecoesColecaoRoute: ColecoesColecaoRoute,
   ProdutoProdutoRoute: ProdutoProdutoRoute,
+  PedidoIdConfirmadoRoute: PedidoIdConfirmadoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

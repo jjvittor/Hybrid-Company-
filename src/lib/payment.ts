@@ -54,3 +54,49 @@ export const orderStatusLabels: Record<string, string> = {
   reembolsado: "Reembolsado",
   revisao: "Pagamento em revisão",
 };
+export type OrderListItem = {
+  id: string;
+  numero: string;
+  status: string;
+  total_centavos: number;
+  criado_em: string;
+  rastreio: string | null;
+  revisao_manual?: boolean | undefined;
+  refund?: { id: string; valor_centavos: number } | undefined;
+};
+export type OrderDetail = OrderListItem & {
+  endereco: import("./shipping").Address;
+  frete: import("./shipping").ShippingQuote;
+  subtotal_centavos: number;
+  frete_centavos: number;
+  desconto_centavos: number;
+  parcelas: number;
+  convidado: boolean;
+  mock: boolean;
+  itens: {
+    id: string;
+    slug: string;
+    nome: string;
+    imagem: string;
+    tamanho: string;
+    quantidade: number;
+    preco_centavos: number;
+    edicao_total: number | null;
+    edition_units: { numero_edicao: number }[];
+  }[];
+};
+export const returnInput = orderLocator.extend({ motivo: z.string().trim().min(3).max(1000) });
+export const adminTransition = z.object({
+  id: z.uuid(),
+  status: z.enum(["em_separacao", "enviado", "entregue", "cancelado"]),
+  rastreio: z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9 -]{3,80}$/i)
+    .optional(),
+});
+export const adminRefund = z.object({
+  id: z.uuid(),
+  idempotencia: z.uuid(),
+  valorCentavos: z.number().int().positive().max(1000000000),
+});

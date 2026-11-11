@@ -566,7 +566,7 @@ export function Storefront({
                             width={480}
                             height={600}
                             loading="lazy"
-                            className="product-cutout aero-cutout"
+                            className="product-cutout"
                           />
                         </Button>
                       </div>

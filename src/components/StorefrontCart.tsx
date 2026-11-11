@@ -66,7 +66,7 @@ const CartContext = createContext<{
   add: (product: Product, size: string) => void;
   changeQuantity: (item: CartEntry, delta: number) => void;
   remove: (item: CartEntry) => void;
-  clear: () => void;
+  clear: (purchased: CartEntry[]) => void;
 } | null>(null);
 
 export function StorefrontCartProvider({ children }: { children: ReactNode }) {
@@ -252,9 +252,17 @@ export function StorefrontCartProvider({ children }: { children: ReactNode }) {
         changeQuantity: (item, delta) =>
           update({ slug: item.slug, size: item.size, delta: delta > 0 ? 1 : -1 }),
         remove: (item) => update({ slug: item.slug, size: item.size, delta: 0 }),
-        clear: () => {
-          if (!email) saveGuest([]);
-          sync([]);
+        clear: (purchased) => {
+          const current = email ? latest.current : loadGuest();
+          const remaining = current.flatMap((item) => {
+            const bought = purchased.find(
+              (line) => line.slug === item.slug && line.size === item.size,
+            );
+            const quantity = item.quantity - (bought?.quantity ?? 0);
+            return quantity > 0 ? [{ ...item, quantity }] : [];
+          });
+          if (!email) saveGuest(remaining);
+          sync(remaining);
         },
       }}
     >

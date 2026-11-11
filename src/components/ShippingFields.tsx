@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { brl, commerceRequest, type CartEntry } from "@/lib/commerce";
 import {
@@ -19,6 +19,8 @@ export function AddressFields({
   address: AddressDraft;
   onChange: (value: AddressDraft) => void;
 }) {
+  const current = useRef(address);
+  current.current = address;
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const lookup = async () => {
@@ -29,7 +31,7 @@ export function AddressFields({
         "cep",
         { cep: address.cep },
       );
-      onChange({ ...address, ...found });
+      if (current.current.cep === address.cep) onChange({ ...current.current, ...found });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Preencha o endereço à mão.");
     } finally {

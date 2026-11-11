@@ -21,6 +21,7 @@ begin
     return 'revisao';
   end if;
   -- Stale pending and declined responses cannot undo an approved payment.
+  if o.status='reembolsado' and p.reembolsado_centavos=p.valor_centavos then return o.status; end if;
   if p.status='aprovado' and p_status in ('pendente','recusado','cancelado') then return o.status; end if;
   if p_status not in ('pendente','aprovado','recusado','cancelado','reembolsado','revisao') then raise exception 'commerce_payment_status'; end if;
   update public.payments set provider_payment_id=p_reference,status=p_status,instrucoes=p_instructions,atualizado_em=now() where id=p.id;

@@ -1,3 +1,4 @@
+import { AccountOrders } from "@/components/AccountOrders";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { AccountField, AccountLayout, FieldError } from "@/components/AccountFields";
@@ -373,15 +374,7 @@ function MyAccount() {
           </p>
         )}
       </div>
-      <section className="account-block">
-        <h2 className="micro">PEDIDOS</h2>
-        <p className="my-5 text-sm">Você ainda não tem pedidos.</p>
-        <Button asChild className="rounded-full">
-          <Link to="/" hash="comprar">
-            Ver peças
-          </Link>
-        </Button>
-      </section>
+      <AccountOrders />
       <Button
         variant="link"
         className="mt-6 px-0"

@@ -44,3 +44,15 @@ O fluxo reúne identificação, entrega, pagamento e revisão. CPF e endereço s
 ## Fase 5 · Pagamentos
 
 Mercado Pago recebe Pix, token do cartão gerado nos campos hospedados e boleto se habilitado. O webhook assinado é persistido antes de responder e o processamento consulta a API do provedor. Estoque e edição só são confirmados depois da conciliação. O mock exige desenvolvimento local e falha na inicialização em produção. Configure credenciais de teste, segredo do webhook e a rotina `POST /api/loja/tarefas` com `Authorization: Bearer <YBRD_COMMERCE_CRON_SECRET>`. Confira no sandbox os campos hospedados, a validade Pix e as condições de parcelamento da conta. Lint, typecheck, 43 testes e build passaram.
+
+## Fase 6 · Pedido, atendimento e e-mails
+
+A confirmação mostra as peças, numeração das edições, entrega e pagamento. Visitantes recebem um link individual com token derivado no servidor e hash salvo no banco. A conta mostra o histórico e o painel em `/admin/pedidos` exige perfil administrador com MFA. O painel registra envio, rastreio, devoluções e reembolsos. E-mails HTML e texto saem da fila com chave de idempotência. O sitemap lista páginas públicas, enquanto checkout, pedidos e administração usam noindex.
+
+## Homologação
+
+1. Em um projeto Supabase de teste, aplique a migração de conta e as migrações comerciais em ordem. Confira as políticas de acesso e simule duas reservas concorrentes da última unidade. A execução das migrações em PostgreSQL não foi verificada neste ambiente.
+2. Cadastre estoque, tiragem, peso e dimensões. Confirme as imagens geradas contra as peças físicas e preencha as políticas da loja e sua versão em `settings`.
+3. Preencha as variáveis do servidor conforme `.env.example`. Use `YBRD_MP_SANDBOX=true` e as variáveis `YBRD_MP_TEST_*` para o Mercado Pago de teste. Valide Pix, cartão hospedado, boleto quando habilitado, recusa, expiração, reembolso e a entrega de e-mails com os provedores antes de abrir vendas.
+4. Configure a rotina periódica `POST /api/loja/tarefas` com o segredo de cron no cabeçalho Authorization. Ela processa pagamentos enfileirados, e-mails e reservas vencidas. Confira eventos pendentes, divergências de pagamento e os pedidos enviados no ambiente de teste.
+5. Para prévia de catálogo e carrossel, rode `npm.cmd install` e `npm.cmd run dev -- --open` no Windows. O checkout fica desativado enquanto `YBRD_CHECKOUT_ENABLED` não estiver habilitado no servidor.

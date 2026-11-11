@@ -25,13 +25,25 @@ export function mockAllowed(request: Request) {
     ["localhost", "127.0.0.1", "[::1]"].includes(new URL(request.url).hostname)
   );
 }
+function gatewayCredentials() {
+  const sandbox = process.env["YBRD_MP_SANDBOX"] !== "false";
+  return {
+    accessToken: sandbox
+      ? process.env["YBRD_MP_TEST_ACCESS_TOKEN"]
+      : process.env["YBRD_MP_ACCESS_TOKEN"],
+    publicKey:
+      (sandbox ? process.env["YBRD_MP_TEST_PUBLIC_KEY"] : process.env["YBRD_MP_PUBLIC_KEY"]) ??
+      null,
+    webhookSecret: sandbox
+      ? process.env["YBRD_MP_TEST_WEBHOOK_SECRET"]
+      : process.env["YBRD_MP_WEBHOOK_SECRET"],
+  };
+}
 export async function paymentConfig(db: SupabaseClient, request: Request): Promise<PaymentConfig> {
   const mock = mockAllowed(request);
   if (mockEnabled() && !mock) throw new CommerceError(503, "O pagamento está indisponível.");
-  const real = Boolean(
-    process.env["YBRD_MP_ACCESS_TOKEN"] && process.env["YBRD_MP_WEBHOOK_SECRET"],
-  );
-  const publicKey = process.env["YBRD_MP_PUBLIC_KEY"] ?? null;
+  const { accessToken, publicKey, webhookSecret } = gatewayCredentials();
+  const real = Boolean(accessToken && webhookSecret);
   const settings = await commerceSettings(db);
   return {
     pix: real || mock,
@@ -52,6 +64,7 @@ type Charge = {
   metodo: "pix" | "cartao" | "boleto";
   parcelas: number;
   cpf: string;
+  endereco: import("./shipping").Address;
 };
 type GatewayPayment = {
   id: string;
@@ -173,7 +186,7 @@ export async function verifyMercadoPagoSignature(
 }
 export class MercadoPago implements PaymentProvider {
   private async api(path: string, payload?: object, idempotency?: string) {
-    const token = process.env["YBRD_MP_ACCESS_TOKEN"];
+    const token = gatewayCredentials().accessToken;
     if (!token) throw new CommerceError(503, "Pagamento temporariamente indisponível.");
     const response = await fetch(`https://api.mercadopago.com/v1/payments${path}`, {
       method: payload ? "POST" : "GET",
@@ -192,6 +205,22 @@ export class MercadoPago implements PaymentProvider {
   }
   private async create(order: Charge, paymentMethodId: string, card?: CardPayment) {
     const origin = process.env["YBRD_SITE_ORIGIN"];
+    const [firstName, ...lastName] = order.endereco.destinatario.trim().split(/\s+/);
+    const billing =
+      order.metodo === "boleto"
+        ? {
+            first_name: firstName,
+            last_name: lastName.join(" "),
+            address: {
+              zip_code: order.endereco.cep,
+              street_name: order.endereco.rua,
+              street_number: order.endereco.numero,
+              neighborhood: order.endereco.bairro,
+              city: order.endereco.cidade,
+              federal_unit: order.endereco.uf,
+            },
+          }
+        : {};
     return parsePayment(
       await this.api(
         "",
@@ -200,7 +229,11 @@ export class MercadoPago implements PaymentProvider {
           description: "Pedido YBRD",
           external_reference: order.id,
           payment_method_id: paymentMethodId,
-          payer: { email: order.email, identification: { type: "CPF", number: order.cpf } },
+          payer: {
+            ...billing,
+            email: order.email,
+            identification: { type: "CPF", number: order.cpf },
+          },
           notification_url: `${origin}/api/loja/webhook-mercado-pago`,
           ...(card
             ? {
@@ -239,7 +272,7 @@ export class MercadoPago implements PaymentProvider {
     return { id: String(result.id), approved: result.status === "approved" };
   }
   verificarWebhook(request: Request, id: string) {
-    return verifyMercadoPagoSignature(request, id, process.env["YBRD_MP_WEBHOOK_SECRET"] ?? "");
+    return verifyMercadoPagoSignature(request, id, gatewayCredentials().webhookSecret ?? "");
   }
 }
 class MockPayment implements PaymentProvider {
@@ -299,7 +332,7 @@ export async function payCheckout(
   if (order.status !== "aguardando_pagamento") return order;
   const stored = await db
     .from("orders")
-    .select("id,numero,email,total_centavos,expira_em,metodo,parcelas,customer_hash")
+    .select("id,numero,email,total_centavos,expira_em,metodo,parcelas,customer_hash,endereco")
     .eq("id", order.id)
     .eq("actor_hash", actor.hash)
     .single();

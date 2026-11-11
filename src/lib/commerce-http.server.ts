@@ -1,3 +1,6 @@
+import { processCommerceEmails, refundOrder, requireAdmin } from "./fulfillment.server";
+import { adminRefund, adminTransition, returnInput } from "./payment";
+import { orderDetail } from "./orders.server";
 import {
   checkCron,
   queueMercadoPagoWebhook,
@@ -40,7 +43,14 @@ export async function handleCommerce(request: Request, operation: string, contex
         await checkCron(request);
         const db = commerceBackend();
         const expirados = await commerceRpc(db, "commerce_expire_orders", { p_limit: 100 });
-        return Response.json({ expirados, eventos: await processPaymentEvents(db) }, { headers });
+        return Response.json(
+          {
+            expirados,
+            eventos: await processPaymentEvents(db),
+            emails: await processCommerceEmails(db),
+          },
+          { headers },
+        );
       }
       const db = commerceBackend();
       const event = await queueMercadoPagoWebhook(db, request);
@@ -85,6 +95,92 @@ export async function handleCommerce(request: Request, operation: string, contex
     }
     if (operation === "pagamento-config")
       return Response.json(await paymentConfig(db, request), { headers });
+    if (operation === "pedido-detalhe") {
+      const locator = orderLocator.parse(await readCommerceBody(request));
+      return Response.json(
+        { ...(await orderDetail(db, request, locator)), mock: mockAllowed(request) },
+        { headers },
+      );
+    }
+    if (operation === "pedidos") {
+      const user = await requireCommerceAccount(request);
+      const result = await db
+        .from("orders")
+        .select("id,numero,status,total_centavos,criado_em,rastreio")
+        .eq("user_id", user.id)
+        .order("criado_em", { ascending: false })
+        .limit(50);
+      if (result.error) throw new CommerceError(503, "Não foi possível carregar os pedidos.");
+      return Response.json({ pedidos: result.data }, { headers });
+    }
+    if (operation === "solicitar-troca") {
+      const input = returnInput.parse(await readCommerceBody(request));
+      const order = await authorizedOrder(db, request, input);
+      await commerceRpc(db, "commerce_return", { p_order: order.id, p_reason: input.motivo });
+      return Response.json({ recebido: true }, { headers });
+    }
+    if (operation.startsWith("admin-")) {
+      const admin = await requireAdmin(request);
+      if (operation === "admin-pedidos") {
+        const result = await db
+          .from("orders")
+          .select(
+            "id,numero,status,total_centavos,criado_em,rastreio,revisao_manual,payments(payment_refunds(id,valor_centavos,status)),return_requests(id,motivo,status,criado_em)",
+          )
+          .order("criado_em", { ascending: false })
+          .limit(100);
+        if (result.error) throw new CommerceError(503, "Não foi possível carregar os pedidos.");
+        const pedidos = result.data.map(({ payments, ...order }) => ({
+          ...order,
+          refund: (Array.isArray(payments) ? payments[0] : payments)?.payment_refunds?.find(
+            (refund: { status: string }) => refund.status === "pendente",
+          ),
+        }));
+        return Response.json({ pedidos }, { headers });
+      }
+      if (operation === "admin-status") {
+        const input = adminTransition.parse(await readCommerceBody(request));
+        await commerceRpc(db, "commerce_admin_transition", {
+          p_order: input.id,
+          p_status: input.status,
+          p_tracking: input.rastreio ?? null,
+          p_admin: admin.id,
+        });
+        return Response.json({ atualizado: true }, { headers });
+      }
+      if (operation === "admin-reembolso") {
+        const input = adminRefund.parse(await readCommerceBody(request));
+        return Response.json(await refundOrder(db, request, admin.id, input), { headers });
+      }
+      if (operation === "admin-troca") {
+        const input = z
+          .object({
+            id: z.uuid(),
+            status: z.enum(["em_analise", "aprovado", "recusado", "concluido"]),
+          })
+          .parse(await readCommerceBody(request));
+        const result = await db
+          .from("return_requests")
+          .update({ status: input.status })
+          .eq("id", input.id)
+          .select("id,order_id")
+          .maybeSingle();
+        if (result.error || !result.data)
+          throw new CommerceError(404, "Solicitação não encontrada.");
+        const order = await db
+          .from("orders")
+          .select("status")
+          .eq("id", result.data.order_id)
+          .single();
+        if (!order.error)
+          await db.from("order_events").insert({
+            order_id: result.data.order_id,
+            status: order.data.status,
+            detalhes: { evento: "troca_atualizada", status: input.status, admin: admin.id },
+          });
+        return Response.json({ atualizado: true }, { headers });
+      }
+    }
     if (operation === "pedido-status") {
       const locator = orderLocator.parse(await readCommerceBody(request));
       return Response.json(await orderPaymentView(db, request, locator), { headers });

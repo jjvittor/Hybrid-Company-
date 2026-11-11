@@ -14,6 +14,9 @@ export const Route = createFileRoute("/produto/$produto")({
           meta: [
             { title: `${loaderData.name} — Ybrd` },
             { name: "description", content: loaderData.description },
+            { property: "og:title", content: loaderData.name },
+            { property: "og:description", content: loaderData.description },
+            { property: "og:image", content: loaderData.img },
           ],
         }
       : {},

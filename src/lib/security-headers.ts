@@ -3,7 +3,7 @@ export function securityHeaders(request: Request, response: Response, nonce: str
   const headers = new Headers(response.headers);
   const url = new URL(request.url);
   const turnstile = "https://challenges.cloudflare.com";
-  const checkout = url.pathname === "/checkout";
+  const checkout = /^\/checkout\/?$/.test(url.pathname);
   const mpScripts = checkout ? " https://sdk.mercadopago.com https://secure.mlstatic.com" : "";
   const mpFrames = checkout
     ? " https://sdk.mercadopago.com https://www.mercadopago.com https://www.mercadopago.com.br"
@@ -42,6 +42,9 @@ export function securityHeaders(request: Request, response: Response, nonce: str
   )
     headers.set("Cache-Control", "no-store");
   if (
+    url.pathname.startsWith("/pedido/") ||
+    url.pathname.startsWith("/admin/") ||
+    checkout ||
     /^\/(?:entrar|criar-conta|recuperar-senha|redefinir-senha|minha-conta|auth|reset-password)\/?$/.test(
       url.pathname,
     )

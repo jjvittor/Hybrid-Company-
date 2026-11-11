@@ -70,26 +70,13 @@ function integer(value: unknown, fallback: number, min: number, max: number) {
     : fallback;
 }
 export async function commerceCatalog(db: SupabaseClient): Promise<CommerceStatus> {
-  const [{ data, error }, settings] = await Promise.all([
-    db
-      .from("products")
-      .select("slug,preco_centavos,edicao_total,product_variants(tamanho,estoque)")
-      .eq("ativo", true),
+  const [products, settings] = await Promise.all([
+    commerceRpc<CommerceStatus["products"]>(db, "commerce_inventory", {}),
     commerceSettings(db),
   ]);
-  if (error) throw new CommerceError(503, "Não foi possível consultar o estoque.");
   return {
     enabled: true,
-    products: data.map((row) => ({
-      slug: row.slug,
-      priceCentavos: row.preco_centavos,
-      editionTotal: row.edicao_total,
-      available: Math.min(
-        row.edicao_total,
-        row.product_variants.reduce((n, variant) => n + variant.estoque, 0),
-      ),
-      variants: row.product_variants.map((v) => ({ size: v.tamanho, stock: v.estoque })),
-    })),
+    products,
     pixPercent: integer(settings.get("pix_percentual"), 0, 0, 100),
     maxInstallments: integer(settings.get("parcelas_maximas"), 1, 1, 6),
     minInstallmentCentavos: integer(settings.get("parcela_minima_centavos"), 3000, 1, 100000000),
@@ -110,6 +97,7 @@ export function revalidateCart(
     const previous = unique.get(key)?.quantity ?? 0;
     unique.set(key, { ...item, quantity: Math.min(99, item.quantity + previous) });
   }
+  const remaining = new Map(catalog.products.map((product) => [product.slug, product.available]));
   let subtotalCentavos = 0;
   const validated = [...unique.values()].flatMap((item) => {
     const product = catalog.products.find((p) => p.slug === item.slug);
@@ -118,7 +106,12 @@ export function revalidateCart(
       notices.push("Esgotado, removemos da sacola.");
       return [];
     }
-    const quantity = Math.min(item.quantity, variant.stock);
+    const quantity = Math.min(item.quantity, variant.stock, remaining.get(item.slug) ?? 0);
+    if (quantity < 1) {
+      notices.push("Esgotado, removemos da sacola.");
+      return [];
+    }
+    remaining.set(item.slug, (remaining.get(item.slug) ?? 0) - quantity);
     if (quantity !== item.quantity)
       notices.push(
         variant.stock === 1

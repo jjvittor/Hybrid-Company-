@@ -118,7 +118,7 @@ export function ProductPreview({ product, onAdded }: { product: Product; onAdded
             alt={product.name}
             width={480}
             height={600}
-            className="preview-product-image aero-cutout"
+            className="preview-product-image"
             fetchPriority="high"
           />
         </div>

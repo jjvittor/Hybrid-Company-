@@ -19,6 +19,11 @@ type MercadoPagoInstance = {
       identificationNumber: string;
     }): Promise<{ id?: string }>;
   };
+  getInstallments(input: {
+    amount: string;
+    bin: string;
+    paymentTypeId: "credit_card";
+  }): Promise<{ payer_costs?: { installments: number; installment_rate: number }[] }[]>;
   getPaymentMethods(input: { bin: string }): Promise<{
     results: { id: string; payment_type_id: string; issuer?: { id: string | number } }[];
   }>;
@@ -48,13 +53,16 @@ function loadSdk() {
   });
   return sdkLoad;
 }
-export type CardHandle = { tokenize(cpf: string): Promise<CardPayment> };
+export type CardHandle = {
+  tokenize(cpf: string, totalCentavos: number, parts: number): Promise<CardPayment>;
+};
 export const MercadoPagoCard = forwardRef<CardHandle, { publicKey: string }>(
   function MercadoPagoCard({ publicKey }, ref) {
     const id = useId().replace(/[^a-zA-Z0-9_-]/g, "");
     const [holder, setHolder] = useState("");
     const [message, setMessage] = useState("Carregando formulário seguro do cartão.");
     const instance = useRef<MercadoPagoInstance | null>(null);
+    const binRef = useRef("");
     const brand = useRef<Omit<CardPayment, "token"> | null>(null);
     useEffect(() => {
       let mounted = true;
@@ -75,6 +83,7 @@ export const MercadoPagoCard = forwardRef<CardHandle, { publicKey: string }>(
           instance.current = mp;
           number.on("binChange", ({ bin }) => {
             lastBin = bin ?? "";
+            binRef.current = lastBin;
             brand.current = null;
             if (!bin) return;
             void mp
@@ -107,11 +116,31 @@ export const MercadoPagoCard = forwardRef<CardHandle, { publicKey: string }>(
     useImperativeHandle(
       ref,
       () => ({
-        async tokenize(cpf) {
+        async tokenize(cpf, totalCentavos, parts) {
           const mp = instance.current;
           const method = brand.current;
           if (!mp || !method || holder.trim().length < 2)
             throw new Error("Confira os dados do cartão.");
+          if (parts > 1) {
+            const plans = await mp
+              .getInstallments({
+                amount: (totalCentavos / 100).toFixed(2),
+                bin: binRef.current,
+                paymentTypeId: "credit_card",
+              })
+              .catch(() => []);
+            if (
+              !plans.some((plan) =>
+                plan.payer_costs?.some(
+                  (option) => option.installments === parts && option.installment_rate === 0,
+                ),
+              )
+            ) {
+              throw new Error(
+                "Estas parcelas sem juros não estão disponíveis. Escolha outra opção.",
+              );
+            }
+          }
           try {
             const result = await mp.fields.createCardToken({
               cardholderName: holder.trim(),

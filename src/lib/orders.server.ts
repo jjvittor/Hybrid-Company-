@@ -53,3 +53,31 @@ export async function orderPaymentView(
     instrucoes: order.status === "aguardando_pagamento" ? (payment.data?.instrucoes ?? null) : null,
   };
 }
+
+export async function orderDetail(db: SupabaseClient, request: Request, locator: Locator) {
+  const order = await authorizedOrder(db, request, locator);
+  const result = await db
+    .from("order_items")
+    .select(
+      "id,slug,nome,imagem,tamanho,quantidade,preco_centavos,edicao_total,edition_units(numero_edicao)",
+    )
+    .eq("order_id", order.id)
+    .order("nome");
+  if (result.error) throw new CommerceError(503, "Não foi possível carregar os itens do pedido.");
+  return {
+    id: order.id,
+    numero: order.numero,
+    status: order.status,
+    total_centavos: order.total_centavos,
+    subtotal_centavos: order.subtotal_centavos,
+    frete_centavos: order.frete_centavos,
+    desconto_centavos: order.desconto_centavos,
+    criado_em: order.criado_em,
+    rastreio: order.rastreio,
+    endereco: order.endereco,
+    frete: order.frete,
+    parcelas: order.parcelas,
+    convidado: !order.user_id,
+    itens: result.data,
+  };
+}

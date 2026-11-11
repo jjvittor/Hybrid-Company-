@@ -1,7 +1,6 @@
 import { MercadoPagoCard, type CardHandle } from "@/components/MercadoPagoCard";
-import { OrderPayment } from "@/components/OrderPayment";
 import type { PaymentConfig } from "@/lib/payment";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { YbrdLogo } from "@/components/YbrdLogo";
@@ -42,6 +41,7 @@ const cpfMask = (value: string) =>
 
 function CheckoutPage() {
   const { user } = useAccount();
+  const navigate = useNavigate();
   const { cart, commerce, subtotalCentavos, refresh, clear } = useStorefrontCart();
   const [step, setStep] = useState(0);
   const [email, setEmail] = useState("");
@@ -60,7 +60,6 @@ function CheckoutPage() {
   const [accepted, setAccepted] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [placed, setPlaced] = useState<PlacedOrder | null>(null);
   const attempt = useRef<string | undefined>(undefined);
   const sending = useRef(false);
   const isAccount = Boolean(user?.email);
@@ -173,7 +172,7 @@ function CheckoutPage() {
         attempt.current ??= crypto.randomUUID();
         const card =
           method === "cartao" && !paymentConfig?.mock
-            ? await cardRef.current?.tokenize(cpf)
+            ? await cardRef.current?.tokenize(cpf, review.total_centavos, parts)
             : undefined;
         const order = await commerceRequest<PlacedOrder>("pagar", {
           card,
@@ -182,8 +181,12 @@ function CheckoutPage() {
           idempotencia: attempt.current,
           aceitouTermos: true,
         });
-        setPlaced(order);
-        clear();
+        clear(items);
+        await navigate({
+          to: "/pedido/$id/confirmado",
+          params: { id: order.id },
+          search: order.acesso ? { acesso: order.acesso } : {},
+        });
       }
     });
   };
@@ -243,9 +246,7 @@ function CheckoutPage() {
         </Link>
       </div>
       <h1 className="section-title mb-5">Finalizar compra</h1>
-      {placed ? (
-        <OrderPayment id={placed.id} acesso={placed.acesso} mock={paymentConfig?.mock} />
-      ) : !commerce.enabled ? (
+      {!commerce.enabled ? (
         <p>Compras ainda indisponíveis.</p>
       ) : !cart.length ? (
         <p>Sua sacola está vazia.</p>
