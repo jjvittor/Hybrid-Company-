@@ -3,6 +3,7 @@ import { z } from "zod";
 // Keep validation compatible with the production policy against dynamic code evaluation.
 z.config({ jitless: true });
 
+// eslint-disable-next-line no-control-regex -- Block control characters in user input.
 const control = /[\u0000-\u001f\u007f-\u009f]/u;
 const clean = (max: number) =>
   z

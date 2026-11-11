@@ -64,9 +64,7 @@ export default {
           headers,
           ...(request.body ? { body: request.body, duplex: "half" as const } : {}),
         });
-        response = await normalizeCatastrophicSsrResponse(
-          await handler.fetch(forwarded, env, ctx),
-        );
+        response = await normalizeCatastrophicSsrResponse(await handler.fetch(forwarded, env, ctx));
       }
     } catch {
       console.error("[YBRD] Falha na requisição.");
