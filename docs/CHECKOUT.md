@@ -32,3 +32,7 @@ Migração `20261111010000_commerce.sql` cria o catálogo comercial, reservas, e
 ## Fase 2 · Sacola
 
 A página `/sacola` e o painel lateral compartilham o mesmo componente. Visitantes mantêm a sacola versionada no navegador, com fallback em memória. Contas mesclam os itens no banco uma vez por identificador de importação. O servidor limita quantidades, atualiza preços em centavos e avisa sobre itens indisponíveis. A prévia continua acessível com vendas desativadas. A ligação de frete e cupom segue nas próximas fases. Lint, typecheck, 38 testes e build passaram.
+
+## Fase 3 · Entrega
+
+ViaCEP preenche rua, bairro, cidade e UF com cache de 10 minutos. A cotação usa peso e dimensões cadastrados, Melhor Envio com timeout de 6 segundos e tabela fixa como reserva. O mock depende de variável explícita em desenvolvimento. A gratuidade reduz a opção mais econômica a zero. Configure `YBRD_ORIGIN_CEP`, token e identificação do Melhor Envio, ou `frete_fixo` com faixa inicial/final, peso máximo, preço em centavos e prazo. As integrações externas aguardam homologação. Lint, typecheck, 38 testes e build passaram.

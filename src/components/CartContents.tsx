@@ -1,3 +1,4 @@
+import { CartShipping } from "@/components/ShippingFields";
 import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { Minus, Plus, X } from "lucide-react";
@@ -126,7 +127,10 @@ export function CartContents({ onNavigate }: { onNavigate?: () => void }) {
             </p>
             {commerce.enabled ? (
               <>
-                <p className="text-sm">Calcule o frete e aplique seu cupom no checkout.</p>
+                <CartShipping
+                  key={cart.map((item) => `${item.slug}:${item.size}:${item.quantity}`).join("|")}
+                  items={cart.map(({ slug, size, quantity }) => ({ slug, size, quantity }))}
+                />
                 {commerce.pixPercent > 0 && (
                   <p className="micro">Pague com Pix e ganhe {commerce.pixPercent}%</p>
                 )}
