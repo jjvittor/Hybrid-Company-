@@ -436,3 +436,36 @@ a:hover { color: var(--signal); }
 .scene-curve .caption-in span { animation: scene-point-enter 240ms both; }
 .scene-curve .caption-out span { animation: scene-text-exit 240ms both; }
 @keyframes scene-text-exit { to { opacity: 0; } }
+
+/* R refinement: original letter outlines, font metrics and existing layout retained. */
+.ybrd-logo { display: inline; color: inherit; }
+.ybrd-logo-text { display: inline-block; width: 2.604em; height: .7em; vertical-align: baseline; }
+.ybrd-logo-display { display: none; }
+.ybrd-logo[data-brand="hybrd"] .ybrd-logo-text { width: 3.354em; }
+.hero-brand .ybrd-logo-text { display: none; }
+.hero-brand .ybrd-logo-display { display: inline-block; width: 3.503em; height: .75em; vertical-align: baseline; }
+.hero-brand .ybrd-logo[data-brand="hybrd"] .ybrd-logo-display { width: 4.427em; }
+
+/* Isolated, temporary comparison route; never included in the site menu. */
+.logo-lab { padding: 32px; background: var(--cream); color: var(--ink); }
+.logo-lab > header { max-width: 900px; margin-bottom: 40px; }
+.logo-lab h1 { margin: 12px 0; font-size: 36px; }
+.logo-lab h2 { margin: 24px 0 16px; font-size: 20px; }
+.logo-lab header p { margin-block: 8px; }
+.logo-lab header a { display: inline-block; margin-top: 12px; text-decoration: underline; }
+.logo-lab-tone { padding: 24px; margin-bottom: 16px; border: 1px solid var(--concrete); }
+.logo-lab-positive { background: var(--cream); color: #000; }
+.logo-lab-negative { background: var(--ink); color: var(--cream); }
+.logo-lab-scroll { overflow-x: auto; }
+.logo-lab table { border-collapse: collapse; }
+.logo-lab th { text-align: left; font-family: var(--font-mono); font-weight: 400; padding: 16px; }
+.logo-lab td { padding: 16px; min-width: 490px; vertical-align: top; }
+.logo-lab-size { display: block; margin-bottom: 12px; }
+.logo-lab-mark { display: block; width: auto; max-width: none; }
+.logo-lab-h16 { height: 16px; }
+.logo-lab-h24 { height: 24px; }
+.logo-lab-h48 { height: 48px; }
+.logo-lab-h120 { height: 120px; }
+.logo-lab-recommendation p { margin-block: 8px; }
+.logo-lab :is(a, [tabindex]):focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+@media (max-width: 600px) { .logo-lab { padding: 16px; } .logo-lab-tone { padding: 16px; } }

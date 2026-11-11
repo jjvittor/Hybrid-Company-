@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CriarContaRouteImport } from './routes/criar-conta'
 import { Route as EntrarRouteImport } from './routes/entrar'
+import { Route as LogoLabRouteImport } from './routes/logo-lab'
 import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -43,6 +44,11 @@ const CriarContaRoute = CriarContaRouteImport.update({
 const EntrarRoute = EntrarRouteImport.update({
   id: '/entrar',
   path: '/entrar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LogoLabRoute = LogoLabRouteImport.update({
+  id: '/logo-lab',
+  path: '/logo-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/logo-lab': typeof LogoLabRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/logo-lab': typeof LogoLabRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/criar-conta': typeof CriarContaRoute
   '/entrar': typeof EntrarRoute
+  '/logo-lab': typeof LogoLabRoute
   '/recuperar-senha': typeof RecuperarSenhaRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/criar-conta'
     | '/entrar'
+    | '/logo-lab'
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/reset-password'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/criar-conta'
     | '/entrar'
+    | '/logo-lab'
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/reset-password'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/criar-conta'
     | '/entrar'
+    | '/logo-lab'
     | '/recuperar-senha'
     | '/redefinir-senha'
     | '/reset-password'
@@ -160,6 +172,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CriarContaRoute: typeof CriarContaRoute
   EntrarRoute: typeof EntrarRoute
+  LogoLabRoute: typeof LogoLabRoute
   RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -202,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/entrar'
       fullPath: '/entrar'
       preLoaderRoute: typeof EntrarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/logo-lab': {
+      id: '/logo-lab'
+      path: '/logo-lab'
+      fullPath: '/logo-lab'
+      preLoaderRoute: typeof LogoLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recuperar-senha': {
@@ -266,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CriarContaRoute: CriarContaRoute,
   EntrarRoute: EntrarRoute,
+  LogoLabRoute: LogoLabRoute,
   RecuperarSenhaRoute: RecuperarSenhaRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   ResetPasswordRoute: ResetPasswordRoute,

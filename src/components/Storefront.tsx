@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { StoreMenus } from '@/components/StoreMenus';
+import { YbrdLogo } from '@/components/YbrdLogo';
 import { SHOP_CATEGORIES, PRODUCTS, searchProducts, matchesCategory, type Product, type Department } from '@/lib/hybrid-catalog';
 import { CAMPAIGNS, EDITORIALS, type Campaign } from '@/lib/hybrid-editorial';
 import { SceneRing } from '@/components/SceneRing';
@@ -88,7 +89,7 @@ export function Storefront({ collection, collectionCategory, product, newOnly = 
       {notice && <div className="announcement-bar relative flex h-8 items-center justify-center bg-footer px-10 text-background"><p className="micro truncate text-[9px] md:text-[10px]">Prévia Ybrd / Vestir + Morar</p><Button variant="ghost" size="icon" className="absolute right-2 size-7 hover:bg-background/10 hover:text-background" aria-label="Fechar aviso" onClick={() => setNotice(false)}><X className="size-3" /></Button></div>}
       <header className="nav-shell relative">
         <div className="header-row site-width flex h-[76px] items-center justify-between gap-4">
-          <Link to="/" className="wordmark" aria-label="YBRD início">YBRD</Link>
+          <Link to="/" className="wordmark" aria-label={collection?.slug === 'ybrd-home' ? 'HYBRD início' : 'YBRD início'}><YbrdLogo brand={collection?.slug === 'ybrd-home' ? 'hybrd' : 'ybrd'} /></Link>
           <StoreMenus panel={mega} onPanelChange={setMega} mobileOpen={drawer} onMobileChange={setDrawer} signedIn={!!user} onSelectProducts={value => { setOnlyNew(value); setDepartment('Todos'); setCategory(null); setCurrent(1); }} onAgenda={() => setInfo('Agenda')} />
           <div className="flex items-center gap-1 md:gap-3">
             <Button variant="ghost" size="icon" aria-label="Buscar" title="Buscar" onClick={() => { setMega(null); setUtility('search'); }}><Search className="size-[18px]" /></Button>
@@ -121,7 +122,7 @@ export function Storefront({ collection, collectionCategory, product, newOnly = 
             <div className="site-width relative flex items-center justify-between">
               <div>
                 <p className="micro mb-2 text-muted-foreground">Um futuro em comum / São Paulo, Brasil</p>
-                <h1 className="hero-brand">YBRD<span className="text-signal">.</span></h1>
+                <h1 className="hero-brand"><YbrdLogo /><span className="text-signal">.</span></h1>
                 <p className="hero-subtitle mt-2 font-mono text-[11px]">Roupas e objetos para quem veste e mora com a mesma atitude.</p>
                 <nav className="hero-shortcuts mt-3 flex flex-wrap gap-2" aria-label="Explorar departamentos">
                   {CAMPAIGNS.map((c, index) => <Button asChild key={c.slug} variant={index === 0 ? 'glossy' : 'ghost'} className={`micro rounded-full px-4 ${index === 0 ? '' : 'border border-foreground'}`}>
