@@ -36,3 +36,7 @@ A página `/sacola` e o painel lateral compartilham o mesmo componente. Visitant
 ## Fase 3 · Entrega
 
 ViaCEP preenche rua, bairro, cidade e UF com cache de 10 minutos. A cotação usa peso e dimensões cadastrados, Melhor Envio com timeout de 6 segundos e tabela fixa como reserva. O mock depende de variável explícita em desenvolvimento. A gratuidade reduz a opção mais econômica a zero. Configure `YBRD_ORIGIN_CEP`, token e identificação do Melhor Envio, ou `frete_fixo` com faixa inicial/final, peso máximo, preço em centavos e prazo. As integrações externas aguardam homologação. Lint, typecheck, 38 testes e build passaram.
+
+## Fase 4 · Checkout
+
+O fluxo reúne identificação, entrega, pagamento e revisão. CPF e endereço são validados no cliente e no servidor. A revisão assinada vincula o preço, frete e aceite à sessão de compra, com nova conferência no momento da reserva. Cupons e limites são conferidos em transação. Configure `settings.politicas_loja` com razão social, documento, endereço, e-mail, termos, troca e privacidade, além de `termos_versao`. O formulário preserva dados em memória ao voltar etapas e salva somente preferências sem CPF ou endereço. Lint, typecheck, 38 testes e build passaram.

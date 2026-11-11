@@ -1,5 +1,6 @@
+import { couponStorageKey } from "@/lib/checkout";
 import { CartShipping } from "@/components/ShippingFields";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,14 @@ import { PRODUCTS } from "@/lib/hybrid-catalog";
 export function CartContents({ onNavigate }: { onNavigate?: () => void }) {
   const { cart, commerce, notices, busy, refresh, subtotalCentavos, changeQuantity, remove } =
     useStorefrontCart();
+  const [coupon, setCoupon] = useState("");
+  useEffect(() => {
+    try {
+      setCoupon(sessionStorage.getItem(couponStorageKey) ?? "");
+    } catch {
+      /* Optional. */
+    }
+  }, []);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -131,6 +140,27 @@ export function CartContents({ onNavigate }: { onNavigate?: () => void }) {
                   key={cart.map((item) => `${item.slug}:${item.size}:${item.quantity}`).join("|")}
                   items={cart.map(({ slug, size, quantity }) => ({ slug, size, quantity }))}
                 />
+                <label className="grid gap-1 text-sm">
+                  Cupom
+                  <input
+                    className="min-h-11 rounded-md border border-border bg-background px-3"
+                    maxLength={32}
+                    autoComplete="off"
+                    value={coupon}
+                    onChange={(event) => {
+                      const value = event.target.value.toUpperCase();
+                      setCoupon(value);
+                      try {
+                        sessionStorage.setItem(couponStorageKey, value);
+                      } catch {
+                        /* Optional. */
+                      }
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Validado na revisão do pedido.
+                  </span>
+                </label>
                 {commerce.pixPercent > 0 && (
                   <p className="micro">Pague com Pix e ganhe {commerce.pixPercent}%</p>
                 )}

@@ -1,3 +1,11 @@
+import { checkoutSchema, placeOrderSchema } from "./checkout";
+import {
+  getPolicies,
+  orderActor,
+  placeCheckout,
+  requireCommerceAccount,
+  reviewCheckout,
+} from "./checkout.server";
 import { z } from "zod";
 import { cartInput, defaultCommerce, type CartEntry } from "./commerce";
 import { commerceAccount } from "./account-http.server";
@@ -44,6 +52,33 @@ export async function handleCommerce(request: Request, operation: string) {
     if (operation === "frete") {
       const input = shippingInput.parse(await readCommerceBody(request));
       return Response.json(await quoteShipping(db, input.cep, input.items), { headers });
+    }
+    if (operation === "politicas") return Response.json(await getPolicies(db), { headers });
+    if (operation === "enderecos") {
+      const user = await requireCommerceAccount(request);
+      const result = await db
+        .from("addresses")
+        .select("id,endereco")
+        .eq("user_id", user.id)
+        .limit(20);
+      if (result.error) throw new CommerceError(503, "Não foi possível consultar os endereços.");
+      return Response.json({ enderecos: result.data }, { headers });
+    }
+    if (operation === "revisao" || operation === "criar-pedido") {
+      const input = await readCommerceBody(request);
+      const responseHeaders = new Headers(headers);
+      if (operation === "revisao") {
+        const parsed = checkoutSchema.parse(input);
+        const actor = await orderActor(request, responseHeaders, parsed.account);
+        return Response.json(await reviewCheckout(db, parsed, actor.hash), {
+          headers: responseHeaders,
+        });
+      }
+      const parsed = placeOrderSchema.parse(input);
+      const actor = await orderActor(request, responseHeaders, parsed.account);
+      if (!process.env["YBRD_MP_ACCESS_TOKEN"] && process.env["YBRD_PAYMENT_MOCK"] !== "true")
+        throw new CommerceError(503, "O pagamento ainda está indisponível.");
+      return Response.json(await placeCheckout(db, parsed, actor), { headers: responseHeaders });
     }
     if (operation === "catalogo") return Response.json(await commerceCatalog(db), { headers });
     if (operation !== "sacola") throw new CommerceError(404, "Página não encontrada.");
