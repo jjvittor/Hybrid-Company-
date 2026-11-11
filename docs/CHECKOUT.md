@@ -40,3 +40,7 @@ ViaCEP preenche rua, bairro, cidade e UF com cache de 10 minutos. A cotação us
 ## Fase 4 · Checkout
 
 O fluxo reúne identificação, entrega, pagamento e revisão. CPF e endereço são validados no cliente e no servidor. A revisão assinada vincula o preço, frete e aceite à sessão de compra, com nova conferência no momento da reserva. Cupons e limites são conferidos em transação. Configure `settings.politicas_loja` com razão social, documento, endereço, e-mail, termos, troca e privacidade, além de `termos_versao`. O formulário preserva dados em memória ao voltar etapas e salva somente preferências sem CPF ou endereço. Lint, typecheck, 38 testes e build passaram.
+
+## Fase 5 · Pagamentos
+
+Mercado Pago recebe Pix, token do cartão gerado nos campos hospedados e boleto se habilitado. O webhook assinado é persistido antes de responder e o processamento consulta a API do provedor. Estoque e edição só são confirmados depois da conciliação. O mock exige desenvolvimento local e falha na inicialização em produção. Configure credenciais de teste, segredo do webhook e a rotina `POST /api/loja/tarefas` com `Authorization: Bearer <YBRD_COMMERCE_CRON_SECRET>`. Confira no sandbox os campos hospedados, a validade Pix e as condições de parcelamento da conta. Lint, typecheck, 43 testes e build passaram.

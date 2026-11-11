@@ -55,7 +55,7 @@ export default {
       if (url.pathname.startsWith("/api/conta/")) {
         response = await handleAccount(request, url.pathname.slice("/api/conta/".length));
       } else if (url.pathname.startsWith("/api/loja/")) {
-        response = await handleCommerce(request, url.pathname.slice("/api/loja/".length));
+        response = await handleCommerce(request, url.pathname.slice("/api/loja/".length), ctx);
       } else {
         const headers = new Headers(request.headers);
         headers.set(nonceHeader, nonce);

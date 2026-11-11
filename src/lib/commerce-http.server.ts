@@ -1,11 +1,16 @@
-import { checkoutSchema, placeOrderSchema } from "./checkout";
 import {
-  getPolicies,
-  orderActor,
-  placeCheckout,
-  requireCommerceAccount,
-  reviewCheckout,
-} from "./checkout.server";
+  checkCron,
+  queueMercadoPagoWebhook,
+  processPaymentEvents,
+  paymentConfig,
+  payCheckout,
+  mockAllowed,
+  applyPayment,
+} from "./payment.server";
+import { mockPaymentSchema, orderLocator, paySchema } from "./payment";
+import { authorizedOrder, orderPaymentView } from "./orders.server";
+import { checkoutSchema } from "./checkout";
+import { getPolicies, orderActor, requireCommerceAccount, reviewCheckout } from "./checkout.server";
 import { z } from "zod";
 import { cartInput, defaultCommerce, type CartEntry } from "./commerce";
 import { commerceAccount } from "./account-http.server";
@@ -21,20 +26,34 @@ import {
 import { lookupCep, quoteShipping } from "./shipping.server";
 import { cepSchema, shippingInput } from "./shipping";
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
-export async function handleCommerce(request: Request, operation: string) {
+export async function handleCommerce(request: Request, operation: string, context?: unknown) {
   try {
     if (request.method !== "POST")
       return Response.json(
         { message: "Método não disponível." },
         { status: 405, headers: { ...headers, Allow: "POST" } },
       );
+    const enabled = process.env["YBRD_CHECKOUT_ENABLED"] === "true";
+    if (operation === "webhook-mercado-pago" || operation === "tarefas") {
+      if (!enabled) throw new CommerceError(503, "Loja indisponível.");
+      if (operation === "tarefas") {
+        await checkCron(request);
+        const db = commerceBackend();
+        const expirados = await commerceRpc(db, "commerce_expire_orders", { p_limit: 100 });
+        return Response.json({ expirados, eventos: await processPaymentEvents(db) }, { headers });
+      }
+      const db = commerceBackend();
+      const event = await queueMercadoPagoWebhook(db, request);
+      const worker = context as { waitUntil?: (task: Promise<unknown>) => void } | undefined;
+      if (worker?.waitUntil) worker.waitUntil(processPaymentEvents(db).catch(() => {}));
+      return Response.json(event, { headers });
+    }
     const origin = new URL(request.url).origin;
     if (
       request.headers.get("origin") !== origin ||
       request.headers.get("sec-fetch-site") === "cross-site"
     )
       throw new CommerceError(403, "Solicitação não autorizada.");
-    const enabled = process.env["YBRD_CHECKOUT_ENABLED"] === "true";
     if (operation === "catalogo" && !enabled) return Response.json(defaultCommerce, { headers });
     if (!enabled || process.env["YBRD_SITE_ORIGIN"] !== origin)
       throw new CommerceError(503, "Compras ainda indisponíveis.");
@@ -64,7 +83,51 @@ export async function handleCommerce(request: Request, operation: string) {
       if (result.error) throw new CommerceError(503, "Não foi possível consultar os endereços.");
       return Response.json({ enderecos: result.data }, { headers });
     }
-    if (operation === "revisao" || operation === "criar-pedido") {
+    if (operation === "pagamento-config")
+      return Response.json(await paymentConfig(db, request), { headers });
+    if (operation === "pedido-status") {
+      const locator = orderLocator.parse(await readCommerceBody(request));
+      return Response.json(await orderPaymentView(db, request, locator), { headers });
+    }
+    if (operation === "simular-pagamento") {
+      if (!mockAllowed(request)) throw new CommerceError(404, "Página não encontrada.");
+      const parsed = mockPaymentSchema.parse(await readCommerceBody(request));
+      const order = await authorizedOrder(db, request, parsed);
+      const payment = await db
+        .from("payments")
+        .select("provider,provider_payment_id")
+        .eq("order_id", order.id)
+        .single();
+      if (
+        payment.error ||
+        payment.data.provider !== "mock" ||
+        !payment.data.provider_payment_id ||
+        order.status !== "aguardando_pagamento"
+      )
+        throw new CommerceError(409, "A simulação já foi concluída.");
+      if (parsed.resultado === "expirar") {
+        const result = await db
+          .from("orders")
+          .update({ status: "expirado" })
+          .eq("id", order.id)
+          .eq("status", "aguardando_pagamento");
+        if (result.error) throw new CommerceError(409, "Não foi possível expirar o pedido.");
+      } else {
+        await applyPayment(
+          db,
+          {
+            id: payment.data.provider_payment_id,
+            orderId: order.id,
+            cents: order.total_centavos,
+            instructions: null,
+            status: parsed.resultado === "aprovar" ? "aprovado" : "recusado",
+          },
+          "mock",
+        );
+      }
+      return Response.json(await orderPaymentView(db, request, parsed), { headers });
+    }
+    if (operation === "revisao" || operation === "pagar") {
       const input = await readCommerceBody(request);
       const responseHeaders = new Headers(headers);
       if (operation === "revisao") {
@@ -74,11 +137,10 @@ export async function handleCommerce(request: Request, operation: string) {
           headers: responseHeaders,
         });
       }
-      const parsed = placeOrderSchema.parse(input);
-      const actor = await orderActor(request, responseHeaders, parsed.account);
-      if (!process.env["YBRD_MP_ACCESS_TOKEN"] && process.env["YBRD_PAYMENT_MOCK"] !== "true")
-        throw new CommerceError(503, "O pagamento ainda está indisponível.");
-      return Response.json(await placeCheckout(db, parsed, actor), { headers: responseHeaders });
+      return Response.json(
+        await payCheckout(db, request, responseHeaders, paySchema.parse(input)),
+        { headers: responseHeaders },
+      );
     }
     if (operation === "catalogo") return Response.json(await commerceCatalog(db), { headers });
     if (operation !== "sacola") throw new CommerceError(404, "Página não encontrada.");

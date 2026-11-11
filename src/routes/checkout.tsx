@@ -1,3 +1,6 @@
+import { MercadoPagoCard, type CardHandle } from "@/components/MercadoPagoCard";
+import { OrderPayment } from "@/components/OrderPayment";
+import type { PaymentConfig } from "@/lib/payment";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +51,8 @@ function CheckoutPage() {
   const [saveAddress, setSaveAddress] = useState(false);
   const [quotes, setQuotes] = useState<ShippingQuote[]>([]);
   const [shippingId, setShippingId] = useState("");
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
+  const cardRef = useRef<CardHandle>(null);
   const [method, setMethod] = useState<CheckoutInput["metodo"]>("pix");
   const [parts, setParts] = useState(1);
   const [coupon, setCoupon] = useState("");
@@ -81,6 +86,14 @@ function CheckoutPage() {
       .catch(() => {});
     return () => controller.abort();
   }, [isAccount, commerce.enabled]);
+  useEffect(() => {
+    if (!commerce.enabled) return;
+    const controller = new AbortController();
+    void commerceRequest<PaymentConfig>("pagamento-config", {}, controller.signal)
+      .then(setPaymentConfig)
+      .catch(() => {});
+    return () => controller.abort();
+  }, [commerce.enabled]);
   useEffect(() => {
     if (!busy || step !== 3) return;
     const prevent = (event: BeforeUnloadEvent) => {
@@ -158,7 +171,12 @@ function CheckoutPage() {
       } else {
         if (!accepted || !review) throw new Error("Leia e aceite os termos antes de pagar.");
         attempt.current ??= crypto.randomUUID();
-        const order = await commerceRequest<PlacedOrder>("criar-pedido", {
+        const card =
+          method === "cartao" && !paymentConfig?.mock
+            ? await cardRef.current?.tokenize(cpf)
+            : undefined;
+        const order = await commerceRequest<PlacedOrder>("pagar", {
+          card,
           ...buildInput(),
           reviewToken: review.reviewToken,
           idempotencia: attempt.current,
@@ -226,7 +244,7 @@ function CheckoutPage() {
       </div>
       <h1 className="section-title mb-5">Finalizar compra</h1>
       {placed ? (
-        <p role="status">Pedido {placed.numero} recebido. Aguarde as instruções de pagamento.</p>
+        <OrderPayment id={placed.id} acesso={placed.acesso} mock={paymentConfig?.mock} />
       ) : !commerce.enabled ? (
         <p>Compras ainda indisponíveis.</p>
       ) : !cart.length ? (
@@ -369,6 +387,14 @@ function CheckoutPage() {
               )}
               {step === 2 && (
                 <>
+                  {paymentConfig &&
+                    !paymentConfig.pix &&
+                    !paymentConfig.cartao &&
+                    !paymentConfig.boleto && (
+                      <p role="status" className="text-sm">
+                        Pagamentos ainda indisponíveis.
+                      </p>
+                    )}
                   <fieldset className="space-y-2">
                     <legend className="micro mb-2">Forma de pagamento</legend>
                     {(
@@ -378,29 +404,32 @@ function CheckoutPage() {
                           `Pix${commerce.pixPercent ? ` · ${commerce.pixPercent}% de desconto` : ""}`,
                         ],
                         ["cartao", "Cartão de crédito"],
+                        ["boleto", "Boleto"],
                       ] as const
-                    ).map(([value, name]) => (
-                      <label
-                        key={value}
-                        className="flex items-center gap-3 border border-border p-3 text-sm"
-                      >
-                        <input
-                          type="radio"
-                          name="pagamento"
-                          checked={method === value}
-                          onChange={() => {
-                            setMethod(value);
-                            setParts(1);
-                            try {
-                              sessionStorage.setItem("ybrd-checkout-method", value);
-                            } catch {
-                              /* Optional preference. */
-                            }
-                          }}
-                        />
-                        {name}
-                      </label>
-                    ))}
+                    )
+                      .filter(([value]) => paymentConfig?.[value])
+                      .map(([value, name]) => (
+                        <label
+                          key={value}
+                          className="flex items-center gap-3 border border-border p-3 text-sm"
+                        >
+                          <input
+                            type="radio"
+                            name="pagamento"
+                            checked={method === value}
+                            onChange={() => {
+                              setMethod(value);
+                              setParts(1);
+                              try {
+                                sessionStorage.setItem("ybrd-checkout-method", value);
+                              } catch {
+                                /* Optional preference. */
+                              }
+                            }}
+                          />
+                          {name}
+                        </label>
+                      ))}
                   </fieldset>
                   <label className="grid gap-1 text-sm">
                     Cupom
@@ -427,6 +456,9 @@ function CheckoutPage() {
                     </p>
                     <p>Até {review.frete.prazoDias} dias úteis</p>
                   </div>
+                  {method === "cartao" && paymentConfig?.publicKey && !paymentConfig.mock && (
+                    <MercadoPagoCard ref={cardRef} publicKey={paymentConfig.publicKey} />
+                  )}
                   {method === "cartao" && (
                     <label className="grid gap-1 text-sm">
                       Parcelas
@@ -504,7 +536,9 @@ function CheckoutPage() {
                 <Button
                   type="submit"
                   className="rounded-full"
-                  disabled={busy || (step === 3 && !accepted)}
+                  disabled={
+                    busy || (step >= 2 && !paymentConfig?.[method]) || (step === 3 && !accepted)
+                  }
                 >
                   {busy
                     ? "Aguarde"
