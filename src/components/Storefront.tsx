@@ -2,8 +2,8 @@ import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { SHOP_CATEGORIES, PRODUCTS, MENU, searchProducts, type Product, type Department } from '@/lib/hybrid-catalog';
+import { StoreMenus } from '@/components/StoreMenus';
+import { SHOP_CATEGORIES, PRODUCTS, searchProducts, matchesCategory, type Product, type Department } from '@/lib/hybrid-catalog';
 import { CAMPAIGNS, EDITORIALS, type Campaign } from '@/lib/hybrid-editorial';
 import { SceneRing } from '@/components/SceneRing';
 import { LookArchive } from '@/components/LookArchive';
@@ -11,7 +11,7 @@ import { MAX_PREVIEW_QUANTITY, useStorefrontCart } from '@/components/Storefront
 import { brl, previewMessage, PreviewPurchase, ProductPreview } from '@/components/ProductPreview';
 import { useAccount } from '@/components/AccountProvider';
 import { installmentAmount } from '@/lib/utils';
-import { Search, User, ShoppingBag, Menu, X, Plus, ArrowUpRight, ArrowUp, ArrowLeft, ArrowRight, Minus, Check, ChevronDown } from 'lucide-react';
+import { Search, User, ShoppingBag, Menu, X, Plus, ArrowUpRight, ArrowUp, ArrowLeft, ArrowRight, Minus, Check } from 'lucide-react';
 
 const edition = (name: string) => {
   let h = 7;
@@ -24,7 +24,7 @@ const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ b
 
 function WindowBar({ title }: { title: string }) { return <div className="window-bar"><div className="window-dots" aria-hidden="true"><span /><span /><span /></div><span className="micro text-[10px]">{title}</span><Plus className="size-3" /></div>; }
 
-export function Storefront({ collection, collectionCategory, product }: { collection?: Campaign; collectionCategory?: string | null; product?: Product } = {}) {
+export function Storefront({ collection, collectionCategory, product, newOnly = false }: { newOnly?: boolean; collection?: Campaign; collectionCategory?: string | null; product?: Product } = {}) {
   const { user } = useAccount();
   const [notice, setNotice] = useState(true);
   const [mega, setMega] = useState<'shop' | 'collections' | null>(null);
@@ -38,6 +38,7 @@ export function Storefront({ collection, collectionCategory, product }: { collec
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [activeCampaign, setActiveCampaign] = useState(0);
   const campaignTrack = useRef<HTMLDivElement>(null);
+  const [onlyNew, setOnlyNew] = useState(newOnly);
   const [department, setDepartment] = useState<Department | 'Todos'>('Todos');
   const [category, setCategory] = useState<string | null>(null);
   const [current, setCurrent] = useState(1);
@@ -56,7 +57,7 @@ export function Storefront({ collection, collectionCategory, product }: { collec
     narrow.addEventListener('change', updateMobile);
     return () => { window.removeEventListener('scroll', updateAnnouncement); narrow.removeEventListener('change', updateMobile); document.documentElement.style.removeProperty('--announcement-scroll'); };
   }, []);
-  const explore = (d: Department | 'Todos', c: string | null = null) => { setDepartment(d); setCategory(c); setCurrent(1); setMega(null); setDrawer(false); requestAnimationFrame(() => { if (track.current) track.current.scrollLeft = 0; scrollTo('comprar'); }); };
+  const explore = (d: Department | 'Todos', c: string | null = null) => { setOnlyNew(false); setDepartment(d); setCategory(c); setCurrent(1); setMega(null); setDrawer(false); requestAnimationFrame(() => { if (track.current) track.current.scrollLeft = 0; scrollTo('comprar'); }); };
   const openProduct = (item: Product) => setSelected(item);
   const openBagAfterAdd = () => {
     setSelected(null);
@@ -65,8 +66,8 @@ export function Storefront({ collection, collectionCategory, product }: { collec
   const isHome = !collection && !product;
   const activeDepartment = collection?.department ?? department;
   const activeCategory = collection ? collectionCategory : category;
-  const visible = PRODUCTS.filter(p => (activeDepartment === 'Todos' || p.cat === activeDepartment) && (!activeCategory || p.category === activeCategory));
-  const showcaseTitle = collection ? `Comprar ${collection.title}` : activeCategory ?? (activeDepartment === 'Todos' ? 'Comprar tudo' : activeDepartment);
+  const visible = PRODUCTS.filter(p => (activeDepartment === 'Todos' || p.cat === activeDepartment) && (!activeCategory || matchesCategory(p, activeCategory)) && (!onlyNew || p.tag === 'Novo'));
+  const showcaseTitle = onlyNew ? 'Novidades' : collection ? `Comprar ${collection.title}` : activeCategory ?? (activeDepartment === 'Todos' ? 'Comprar tudo' : activeDepartment);
   const goToCampaign = (index: number) => {
     const carousel = campaignTrack.current;
     const slide = carousel?.children[index];
@@ -81,39 +82,14 @@ export function Storefront({ collection, collectionCategory, product }: { collec
     { title: 'Marca', links: [{ l: 'Sobre' }, { l: 'Agenda' }, { l: 'Contato' }] },
     { title: 'Ajuda', links: [{ l: 'Trocas e devoluções' }, { l: 'Envio' }, { l: 'Pagamento' }] },
   ];
-  const collectionLinks = CAMPAIGNS.map(c => (
-    <Button asChild key={c.slug} variant="ghost" className="flex h-10 justify-start px-0">
-      <Link to="/colecoes/$colecao" params={{ colecao: c.slug }} search={{}} onClick={() => { setMega(null); setDrawer(false); }}>{c.title}<ArrowUpRight /></Link>
-    </Button>
-  ));
-  const shopMenu = <div className="grid grid-cols-2 gap-8">
-    {CAMPAIGNS.map(c => <div key={c.department}>
-      <p className="micro mb-4 text-blue">[ {c.department} ]</p>
-      <div className="flex flex-col items-start gap-1">
-        {SHOP_CATEGORIES.filter(item => item.department === c.department).map(item => !isHome
-          ? <Button asChild key={item.n} variant="ghost" className="h-9 justify-start px-0 text-sm">
-              <Link to="/colecoes/$colecao" params={{ colecao: c.slug }} search={{ categoria: item.n }} onClick={() => { setMega(null); setDrawer(false); }}>{item.n}<ArrowUpRight className="size-3 opacity-50" /></Link>
-            </Button>
-          : <Button key={item.n} variant="ghost" className="h-9 justify-start px-0 text-sm" onClick={() => explore(c.department, item.n)}>{item.n}<ArrowUpRight className="size-3 opacity-50" /></Button>)}
-      </div>
-    </div>)}
-  </div>;
 
   return <div className="min-h-screen bg-background text-foreground">
-    <div className="site-header-stack sticky top-0 z-40" onKeyDown={e => {
-      if (e.key !== 'Escape' || !mega) return;
-      e.currentTarget.querySelector<HTMLButtonElement>('nav button[aria-expanded="true"]')?.focus();
-      setMega(null);
-    }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setMega(null); }}>
+    <div className="site-header-stack sticky top-0 z-40" data-menu-open={mega !== null}>
       {notice && <div className="announcement-bar relative flex h-8 items-center justify-center bg-footer px-10 text-background"><p className="micro truncate text-[9px] md:text-[10px]">Prévia Ybrd / Vestir + Morar</p><Button variant="ghost" size="icon" className="absolute right-2 size-7 hover:bg-background/10 hover:text-background" aria-label="Fechar aviso" onClick={() => setNotice(false)}><X className="size-3" /></Button></div>}
       <header className="nav-shell relative">
         <div className="header-row site-width flex h-[76px] items-center justify-between gap-4">
           <Link to="/" className="wordmark" aria-label="YBRD início">YBRD</Link>
-          <nav className="hidden items-center gap-6 lg:flex" aria-label="Menu principal">
-            <Button variant="ghost" className="micro px-0" aria-expanded={mega === 'shop'} onClick={() => setMega(mega === 'shop' ? null : 'shop')}>{MENU[0]}<ChevronDown className="size-3" /></Button>
-            <Button variant="ghost" className="micro px-0" aria-expanded={mega === 'collections'} onClick={() => setMega(mega === 'collections' ? null : 'collections')}>Coleções<ChevronDown className="size-3" /></Button>
-            <Button variant="ghost" className="micro px-0" onClick={() => { setInfo('Agenda'); setMega(null); }}>Agenda<ArrowUpRight className="size-3" /></Button>
-          </nav>
+          <StoreMenus panel={mega} onPanelChange={setMega} mobileOpen={drawer} onMobileChange={setDrawer} signedIn={!!user} onSelectProducts={value => { setOnlyNew(value); setDepartment('Todos'); setCategory(null); setCurrent(1); }} onAgenda={() => setInfo('Agenda')} />
           <div className="flex items-center gap-1 md:gap-3">
             <Button variant="ghost" size="icon" aria-label="Buscar" title="Buscar" onClick={() => { setMega(null); setUtility('search'); }}><Search className="size-[18px]" /></Button>
             <Button asChild variant="ghost" size="icon" className="relative size-8 sm:size-9"><Link to={user ? "/minha-conta" : "/entrar"} aria-label={user ? "Minha conta" : "Entrar"} title={user ? "Minha conta" : "Entrar"}><User className="size-[18px]" />{user && <span className="absolute right-1 top-1 inline-block size-1.5 rounded-full bg-signal" aria-hidden="true" />}</Link></Button>
@@ -121,7 +97,7 @@ export function Storefront({ collection, collectionCategory, product }: { collec
             <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu" onClick={() => setDrawer(true)}><Menu /></Button>
           </div>
         </div>
-        {mega && <div className="mega-menu glass-panel hidden lg:block"><div className="site-width grid grid-cols-[1fr_1fr] gap-24">{mega === 'shop' ? shopMenu : <div><p className="micro mb-4 text-blue">[ Coleções ]</p>{collectionLinks}<Button variant="ghost" className="flex h-10 px-0" onClick={() => { setMega(null); setInfo('Colaborações'); }}>Colaborações<ArrowUpRight /></Button></div>}<div className="flex items-center justify-between gap-6 border-l border-border pl-10"><div><p className="micro text-muted-foreground">Em conexão / 2026</p><p className="mt-4 text-2xl">O que você veste.<br />Onde você vive.</p><Button asChild variant="link" className="mt-4 px-0 text-blue"><Link to="/" hash="comprar" onClick={() => { if (isHome) explore('Todos'); setMega(null); }}>Explorar tudo <ArrowUpRight /></Link></Button></div><img decoding="async" src={CAMPAIGNS[1].image} alt="YBRD HOME" className="h-44 w-36 object-cover" width={1024} height={1280} loading="lazy" /></div></div></div>}
+
       </header>
     </div>
     <main>
@@ -185,14 +161,21 @@ export function Storefront({ collection, collectionCategory, product }: { collec
           </div>
         </section>
       )}
-      <section id="comprar" className="site-width pb-16"><div className="section-label"><div><p className="micro mb-2 text-muted-foreground">{collection ? collection.label : 'Seleção híbrida / Vestir + Morar'}</p><h2 className="section-title">{showcaseTitle}</h2></div><span className="micro">{String(visible.length ? current : 0).padStart(2, '0')} / {String(visible.length).padStart(2, '0')}</span></div><div className="department-tabs mb-5 flex flex-wrap items-center gap-3">{collection ? [undefined, ...SHOP_CATEGORIES.filter(item => item.department === collection.department).map(item => item.n)].map(item => (
+      <section id="comprar" className="site-width pb-16"><div className="section-label"><div><p className="micro mb-2 text-muted-foreground">{collection ? collection.label : 'Seleção híbrida / Vestir + Morar'}</p><h2 className="section-title">{showcaseTitle}</h2></div><span className="micro">{String(visible.length ? current : 0).padStart(2, '0')} / {String(visible.length).padStart(2, '0')}</span></div><div className="department-tabs mb-5 flex flex-wrap items-center gap-3">{collection ? [undefined, ...SHOP_CATEGORIES.filter(item => item.department === collection.department).map(item => item.n), ...(activeCategory && !SHOP_CATEGORIES.some(item => item.n === activeCategory) ? [activeCategory] : [])].map(item => (
           <Button asChild key={item ?? 'all'} variant="ghost" className={`micro h-7 rounded-none border-b px-0 ${activeCategory === (item ?? null) ? 'border-foreground' : 'border-transparent text-muted-foreground'}`}>
             <Link to="/colecoes/$colecao" params={{ colecao: collection.slug }} search={item ? { categoria: item } : {}} activeOptions={{ exact: true }} resetScroll={false} aria-current={activeCategory === (item ?? null) ? 'page' : undefined}>{item ?? 'Tudo'}</Link>
           </Button>
-        )) : (['Todos', 'Vestir', 'Morar'] as const).map(d => <Button key={d} variant="ghost" className={`micro h-7 rounded-none border-b px-0 ${department === d ? 'border-foreground' : 'border-transparent text-muted-foreground'}`} aria-pressed={department === d} onClick={() => explore(d)}>{d}</Button>)}{!collection && category && <Button variant="chrome" className="micro h-7" onClick={() => explore(department)}>{category}<X /></Button>}</div><div className="showcase-arrows mb-4 flex items-center justify-between"><Button variant="chrome" size="icon" aria-label="Produtos anteriores" onClick={() => moveTrack(-1)}><ArrowLeft /></Button><Button variant="chrome" size="icon" aria-label="Próximos produtos" onClick={() => moveTrack(1)}><ArrowRight /></Button></div><p className="micro mb-4 text-muted-foreground">Peças em edição limitada. Quando acabam, não voltam.</p>{visible.length ? <div ref={track} className="product-track" onScroll={e => { const el = e.currentTarget; const first = el.firstElementChild; if (first) setCurrent(Math.min(visible.length, Math.round(el.scrollLeft / (first.clientWidth + 16)) + 1)); }}>{visible.map(p => <article key={p.slug} className="product-card"><div className="mb-2 flex justify-between"><span className="micro text-muted-foreground">{p.cat}</span>{p.tag && <span className="new-product-tag micro text-[10px] text-signal">[ Novo ]</span>}</div><div className="product-stage"><Button variant="ghost" className="absolute inset-0 h-full w-full rounded-none p-0" aria-label={`Ver ${p.name}`} onClick={() => openProduct(p)}><img decoding="async" src={p.img} alt={p.name} width={480} height={600} loading="lazy" className="product-cutout aero-cutout" /></Button></div><h3 className="mt-3 font-sans text-sm font-medium"><Link to="/produto/$produto" params={{ produto: p.slug }} className="hover:underline">{p.name}</Link></h3><p className="micro text-muted-foreground">{edition(p.name)}</p><p className="micro mt-2"><span className="bg-highlight px-1">{brl(p.price)}</span></p><p className="mt-1 font-mono text-[11px] text-muted-foreground">Simulação: 6x de {brl(installmentAmount(p.price))}</p></article>)}</div> : <p className="py-10 text-sm text-muted-foreground">Nenhum produto nesta seleção.</p>}</section>
+        )) : (['Todos', 'Vestir', 'Morar'] as const).map(d => <Button key={d} variant="ghost" className={`micro h-7 rounded-none border-b px-0 ${department === d ? 'border-foreground' : 'border-transparent text-muted-foreground'}`} aria-pressed={department === d} onClick={() => explore(d)}>{d}</Button>)}{!collection && category && <Button variant="chrome" className="micro h-7" onClick={() => explore(department)}>{category}<X /></Button>}</div><div className="showcase-arrows mb-4 flex items-center justify-between"><Button variant="chrome" size="icon" aria-label="Produtos anteriores" onClick={() => moveTrack(-1)}><ArrowLeft /></Button><Button variant="chrome" size="icon" aria-label="Próximos produtos" onClick={() => moveTrack(1)}><ArrowRight /></Button></div><p className="micro mb-4 text-muted-foreground">Peças em edição limitada. Quando acabam, não voltam.</p>{visible.length ? <div ref={track} className="product-track" onScroll={e => { const el = e.currentTarget; const first = el.firstElementChild; if (first) setCurrent(Math.min(visible.length, Math.round(el.scrollLeft / (first.clientWidth + 16)) + 1)); }}>{visible.map(p => <article key={p.slug} id={`produto-${p.slug}`} className="product-card"><div className="mb-2 flex justify-between"><span className="micro text-muted-foreground">{p.cat}</span>{p.tag && <span className="new-product-tag micro text-[10px] text-signal">[ Novo ]</span>}</div><div className="product-stage"><Button variant="ghost" className="absolute inset-0 h-full w-full rounded-none p-0" aria-label={`Ver ${p.name}`} onClick={() => openProduct(p)}><img decoding="async" src={p.img} alt={p.name} width={480} height={600} loading="lazy" className="product-cutout aero-cutout" /></Button></div><h3 className="mt-3 font-sans text-sm font-medium"><Link to="/produto/$produto" params={{ produto: p.slug }} className="hover:underline">{p.name}</Link></h3><p className="micro text-muted-foreground">{edition(p.name)}</p><p className="micro mt-2"><span className="bg-highlight px-1">{brl(p.price)}</span></p><p className="mt-1 font-mono text-[11px] text-muted-foreground">Simulação: 6x de {brl(installmentAmount(p.price))}</p></article>)}</div> : <p className="py-10 text-sm text-muted-foreground">Nenhum produto nesta seleção.</p>}</section>
       </>}
       {isHome && <>
-      <section className="site-width pb-16" id="look"><SceneRing /></section>
+      <section className="site-width pb-16" id="look"><SceneRing onProductSelect={item => {
+        explore('Todos');
+        requestAnimationFrame(() => {
+          const card = document.getElementById(`produto-${item.slug}`);
+          card?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' });
+          card?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+        });
+      }} /></section>
       <LookArchive />
       <section id="editoriais" className="site-width pb-16"><div className="section-label"><p className="micro">[ Outros pontos de encontro ]</p><p className="micro text-muted-foreground">YBRD Journal / 2026</p></div><div className="editorial-grid">{EDITORIALS.map((e, i) => <article key={e.title}><div className="campaign-frame"><img decoding="async" src={e.image} alt={e.title} width={1024} height={1280} loading="lazy" className="editorial-image" /><span className="editorial-number micro absolute left-4 top-3">[ 0{i + 1} ]</span></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2"><h3 className="micro font-mono">{e.title}</h3><Button variant="chrome" size="sm" className={`micro rounded-full ${i === 3 ? 'editorial-upcoming' : ''}`} disabled={i === 3} onClick={() => i === 1 ? explore('Morar', 'Objetos') : setInfo(e.title)}>{mobile && i < 2 ? 'Explorar' : e.action}{i !== 3 && <ArrowUpRight />}</Button></div><p className="mt-2 text-xs text-muted-foreground">{e.subtitle}</p></article>)}</div></section>
       <section id="manifesto" className="site-width pb-20" aria-label="Sobre a YBRD">
@@ -216,7 +199,6 @@ export function Storefront({ collection, collectionCategory, product }: { collec
         {l === 'Tudo' ? <Link to="/" hash="comprar">Tudo</Link> : <Link to="/colecoes/$colecao" params={{ colecao: l === 'Vestir' ? CAMPAIGNS[0].slug : CAMPAIGNS[1].slug }} search={{}}>{l}</Link>}
       </Button>
     ) : <Button variant="ghost" className="h-auto whitespace-normal p-0 text-left text-xs font-normal text-footer-muted hover:bg-transparent hover:text-background" onClick={() => (go ? go() : setInfo(l))}>{l}</Button>}</li>)}</ul></div>)}<div><p className="micro mb-4">Ybrd</p><Link to="/" hash="manifesto" className="text-xs text-footer-muted">Conheça a marca ↗</Link></div></div><form onSubmit={e => { e.preventDefault(); setEmailOk(true); }}><label htmlFor="email" className="micro block">Lista de interesse / Formulário de demonstração</label>{emailOk ? <p role="status" className="mt-5 text-sm text-footer-muted">E-mail validado no teste do formulário.</p> : <><div className="mt-4 flex gap-3"><input type="email" id="email" aria-label="Seu e-mail" required placeholder="Seu e-mail" className="h-10 min-w-0 flex-1 border-b border-background/30 bg-transparent text-sm outline-none focus:border-aqua" /><Button type="submit" className="micro rounded-full px-6">Testar <ArrowRight /></Button></div><label className="mt-4 flex items-start gap-2 text-[11px] text-footer-muted"><input type="checkbox" required className="mt-0.5 accent-aqua" /><span>Li e aceito a <Button type="button" variant="ghost" className="h-auto p-0 text-[11px] text-footer-muted underline hover:bg-transparent hover:text-background" onClick={() => setInfo('Privacidade')}>política de privacidade</Button>.</span></label></>}</form></div><div className="micro mt-12 flex flex-wrap justify-between gap-3 border-t border-background/20 pt-5 text-[10px] text-footer-muted"><p>© 2026 YBRD COMPANY / SÃO PAULO, BRASIL</p></div></div></footer>
-    <Sheet open={drawer} onOpenChange={setDrawer}><SheetContent side="left" className="glass-panel w-[90%] overflow-y-auto"><SheetHeader><SheetTitle className="wordmark text-left">YBRD</SheetTitle><SheetDescription className="micro text-left">Um universo em conexão.</SheetDescription></SheetHeader><div className="mt-8"><Button asChild variant="ghost" className="micro mb-5 px-0"><Link to="/" hash="comprar" onClick={() => { if (isHome) explore('Todos'); setDrawer(false); }}>{MENU[0]} <ArrowUpRight /></Link></Button>{shopMenu}<p className="micro mb-3 mt-8 text-blue">[ Coleções ]</p>{collectionLinks}<Button variant="ghost" className="flex h-10 px-0" onClick={() => { setDrawer(false); setInfo('Colaborações'); }}>Colaborações<ArrowUpRight /></Button><Button variant="ghost" className="mt-5 px-0" onClick={() => { setDrawer(false); setInfo('Agenda'); }}>Agenda<ArrowUpRight /></Button><Button asChild variant="ghost" className="mt-3 flex px-0"><Link to={user ? "/minha-conta" : "/entrar"} onClick={() => setDrawer(false)}><User />{user ? "Minha conta" : "Entrar"}{user && <span className="inline-block size-1.5 rounded-full bg-signal" aria-hidden="true" />}</Link></Button></div></SheetContent></Sheet>
     <Dialog open={utility !== null} onOpenChange={open => { if (!open) setUtility(null); }}>
       <DialogContent className="max-h-[85svh] overflow-y-auto">
         <DialogHeader>

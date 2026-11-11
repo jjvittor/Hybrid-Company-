@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RING_COUNT, SLIDE_DURATION, clampCard, circularDistance, curveCard, dragCard } from '@/lib/scene-ring-motion';
+import { RING_COUNT, SLIDE_DURATION, clampCard, circularDistance, curveCard, dragCard, dragOffset, inertialCard } from '@/lib/scene-ring-motion';
 describe('Concave scene strip', () => {
   it('has eight cards', () => { expect(RING_COUNT).toBe(8); });
   it('wraps in both directions modulo eight', () => { expect(clampCard(-1)).toBe(7); expect(clampCard(8)).toBe(0); expect(clampCard(24)).toBe(0); expect(clampCard(-17)).toBe(7); });
@@ -13,4 +13,17 @@ describe('Concave scene strip', () => {
   it('dims and scales the side cards', () => { expect(curveCard(1, false).scale).toBe(0.94); expect(curveCard(1, false).opacity).toBe(0.7); expect(curveCard(2, false).opacity).toBe(0.4); });
   it('uses a 900ms transition', () => { expect(SLIDE_DURATION).toBe(900); });
   it('snaps low-sensitivity drag to the nearest card', () => { expect(dragCard(2, -200, 300)).toBe(3); expect(dragCard(2, -40, 300)).toBe(2); });
+});
+
+describe('Scene drag sensitivity and inertia', () => {
+  it('converts 300 pixels to one 45 degree card at 0.15 degrees per pixel', () => {
+    expect(dragOffset(300)).toBe(1);
+    expect(dragOffset(-300)).toBe(-1);
+  });
+  it('snaps with bounded momentum and wraps across both ends', () => {
+    expect(inertialCard(7, -180, 0)).toBe(0);
+    expect(inertialCard(0, 180, 0)).toBe(7);
+    expect(inertialCard(0, -100, -0.5)).toBe(1);
+    expect(inertialCard(0, -20, 0)).toBe(0);
+  });
 });

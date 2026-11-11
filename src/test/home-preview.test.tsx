@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Route } from '@/routes/index';
+import { Storefront } from '@/components/Storefront';
 import { PREVIEW_CART_KEY, StorefrontCartProvider } from '@/components/StorefrontCart';
 
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
@@ -11,6 +11,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => ({
 
 beforeEach(() => {
   localStorage.removeItem(PREVIEW_CART_KEY);
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
   vi.stubGlobal('IntersectionObserver', class {
     observe() {}
     disconnect() {}
@@ -22,7 +23,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const Home = Route.options.component!;
+const Home = Storefront;
 
 describe('Prévia da home', () => {
   it('abre o menu no primeiro clique e devolve o foco ao fechar com Escape', () => {
@@ -34,7 +35,7 @@ describe('Prévia da home', () => {
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
-    const category = screen.getByRole('button', { name: 'Camisetas' });
+    const category = screen.getByRole('link', { name: /Camisetas/ });
     category.focus();
     fireEvent.keyDown(category, { key: 'Escape' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
@@ -45,7 +46,7 @@ describe('Prévia da home', () => {
     render(<Home />, { wrapper: StorefrontCartProvider });
     fireEvent.click(screen.getByRole('button', { name: 'Abrir menu' }));
     const drawer = screen.getByRole('dialog');
-    expect(within(drawer).getByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar');
+    expect(within(drawer).getByRole('link', { name: 'Minha conta' })).toHaveAttribute('href', '/entrar');
   });
 
   it('busca uma peça, escolhe tamanho e remove o item da sacola de demonstração', () => {

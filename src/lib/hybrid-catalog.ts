@@ -52,3 +52,19 @@ export function searchProducts(query: string) {
     return terms.every(term => fields.includes(term));
   });
 }
+
+export const MENU_FILTERS = [
+  { label: "Camisetas", category: "Camisetas", department: "Vestir" },
+  { label: "Moletons", category: "Moletons", department: "Vestir" },
+  { label: "Calças", category: "Calças", department: "Vestir" },
+  { label: "Bonés", category: "Bonés", department: "Vestir" },
+  { label: "Tênis", category: "Calçados", department: "Vestir" },
+  { label: "Poltronas", category: "Poltronas", department: "Morar" },
+  { label: "Vasos", category: "Vasos", department: "Morar" },
+] as const;
+
+export function matchesCategory(product: Product, category: string) {
+  if (category === "Poltronas") return product.slug.startsWith("poltrona-");
+  if (category === "Vasos") return product.slug.startsWith("vaso-");
+  return product.category === category;
+}

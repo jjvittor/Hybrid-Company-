@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { Storefront } from '@/components/Storefront';
-import { SHOP_CATEGORIES } from '@/lib/hybrid-catalog';
+import { SHOP_CATEGORIES, MENU_FILTERS } from '@/lib/hybrid-catalog';
 import { CAMPAIGNS } from '@/lib/hybrid-editorial';
 
 export const Route = createFileRoute('/colecoes/$colecao')({
@@ -10,10 +10,10 @@ export const Route = createFileRoute('/colecoes/$colecao')({
   loader: ({ params, deps }) => {
     const collection = CAMPAIGNS.find(c => c.slug === params.colecao);
     if (!collection) throw notFound();
-    const category = SHOP_CATEGORIES.find(item =>
-      item.department === collection.department && item.n === deps.categoria,
+    const category = [...SHOP_CATEGORIES.map(item => ({ department: item.department, category: item.n })), ...MENU_FILTERS].find(item =>
+      item.department === collection.department && item.category === deps.categoria,
     );
-    return { collection, category: category?.n ?? null };
+    return { collection, category: category?.category ?? null };
   },
   head: ({ loaderData }) => loaderData ? { meta: [
     { title: `${loaderData.collection.title} — Ybrd` },
