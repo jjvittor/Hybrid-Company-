@@ -32,7 +32,13 @@ export const states = [
   "SE",
   "TO",
 ] as const;
-const field = (min: number, max: number) => z.string().trim().min(min).max(max);
+// eslint-disable-next-line no-control-regex -- Reject controls before trimming user input.
+const control = /[\u0000-\u001f\u007f-\u009f]/u;
+const field = (min: number, max: number) =>
+  z
+    .string()
+    .refine((value) => !control.test(value), "Remova os caracteres inválidos.")
+    .pipe(z.string().trim().min(min).max(max));
 export const addressSchema = z.object({
   cep: cepSchema,
   destinatario: field(2, 80),

@@ -16,7 +16,7 @@ import { checkoutSchema } from "./checkout";
 import { getPolicies, orderActor, requireCommerceAccount, reviewCheckout } from "./checkout.server";
 import { z } from "zod";
 import { cartInput, defaultCommerce, type CartEntry } from "./commerce";
-import { commerceAccount } from "./account-http.server";
+import { AccountError, commerceAccount } from "./account-http.server";
 import {
   CommerceError,
   commerceBackend,
@@ -258,7 +258,7 @@ export async function handleCommerce(request: Request, operation: string, contex
       { headers },
     );
   } catch (error) {
-    if (error instanceof CommerceError)
+    if (error instanceof CommerceError || error instanceof AccountError)
       return Response.json({ message: error.message }, { status: error.status, headers });
     if (error instanceof z.ZodError)
       return Response.json({ message: "Confira os dados informados." }, { status: 400, headers });

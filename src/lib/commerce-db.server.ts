@@ -23,7 +23,9 @@ export function commerceBackend() {
   });
 }
 export async function readCommerceBody(request: Request, max = 16384): Promise<unknown> {
-  if (request.headers.get("content-type")?.split(";")[0] !== "application/json")
+  if (
+    request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json"
+  )
     throw new CommerceError(415, "Formato inválido.");
   if (Number(request.headers.get("content-length")) > max)
     throw new CommerceError(413, "Solicitação muito grande.");

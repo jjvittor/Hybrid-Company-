@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
@@ -251,16 +258,19 @@ export function StoreMenus({
   const lastPanel = useRef<StorePanel>("shop");
   if (panel) lastPanel.current = panel;
 
-  const close = (restore = false) => {
-    onPanelChange(null);
-    if (restore) {
-      pointerFocus.current = true;
-      triggers.current[lastPanel.current === "shop" ? 0 : 1]?.focus({ preventScroll: true });
-      queueMicrotask(() => {
-        pointerFocus.current = false;
-      });
-    }
-  };
+  const close = useCallback(
+    (restore = false) => {
+      onPanelChange(null);
+      if (restore) {
+        pointerFocus.current = true;
+        triggers.current[lastPanel.current === "shop" ? 0 : 1]?.focus({ preventScroll: true });
+        queueMicrotask(() => {
+          pointerFocus.current = false;
+        });
+      }
+    },
+    [onPanelChange],
+  );
 
   useEffect(() => {
     if (panel) {
@@ -306,7 +316,7 @@ export function StoreMenus({
       document.removeEventListener("focusin", focusOutside);
       document.removeEventListener("keydown", escape);
     };
-  }, [panel]);
+  }, [panel, close]);
 
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 1024px)");

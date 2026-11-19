@@ -25,7 +25,7 @@ const purposeName = { login: "account", recovery: "recovery" } as const;
 type Purpose = keyof typeof purposeName;
 const noStore = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
 
-class AccountError extends Error {
+export class AccountError extends Error {
   constructor(
     readonly status: number,
     message: string,
@@ -151,7 +151,11 @@ function readCookie(request: Request, name: string) {
     .get("cookie")
     ?.split(/;\s*/)
     .find((pair) => pair.startsWith(name + "="));
-  return match ? decodeURIComponent(match.slice(name.length + 1)) : "";
+  try {
+    return match ? decodeURIComponent(match.slice(name.length + 1)) : "";
+  } catch {
+    return "";
+  }
 }
 
 const validClaims = z.object({
@@ -658,7 +662,7 @@ export async function commerceAccount(request: Request) {
   const access = await rpc(admin, "ybrd_session_access", {
     p_id: sessionId,
     p_user: sub,
-    p_purpose: "account",
+    p_purpose: "login",
   });
   if (!access || (access === "mfa" && aal !== "aal2"))
     throw new AccountError(401, "Entre novamente na sua conta.");
