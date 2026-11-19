@@ -346,8 +346,8 @@ a:hover { color: var(--signal); }
 .store-menu-primary { display: grid; align-content: start; gap: 20px; }
 .store-menu-large { display: flex; align-items: baseline; gap: 12px; font-family: var(--font-display); font-size: 28px; line-height: 1.2; text-transform: uppercase; color: var(--ink); }
 .store-menu-count { font-family: var(--font-mono); font-size: 12px; }
-.store-menu-large svg { width: 20px; height: 20px; opacity: 0; transform: translateX(-6px); transition: opacity 180ms, transform 180ms; }
-.store-menu-large:is(:hover, :focus-visible) svg, .store-menu-collection-link:is(:hover, :focus-visible) svg { opacity: 1; transform: none; }
+.store-menu-large > svg { width: 20px; height: 20px; opacity: 0; transform: translateX(-6px); transition: opacity 180ms, transform 180ms; }
+.store-menu-large:is(:hover, :focus-visible) > svg, .store-menu-collection-link:is(:hover, :focus-visible) .store-menu-large > svg { opacity: 1; transform: none; }
 .store-menu-large:hover, .store-menu-collection-link:hover { color: var(--ink); }
 .store-menu-subcategories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 48px; }
 .store-menu-group { margin-bottom: 8px; color: var(--graphite); }
