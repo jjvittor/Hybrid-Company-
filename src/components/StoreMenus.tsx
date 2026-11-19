@@ -45,7 +45,6 @@ function MenuContent({ panel, onNavigate, onSelectProducts }: PanelProps) {
     { label: "Morar", count: counts.home, department: "Morar" },
     { label: "Novidades", count: counts.new, department: null },
   ];
-  const feature = highlight === 2 ? 1 : 0;
   if (panel === "shop")
     return (
       <div className="store-menu-shop">
@@ -65,8 +64,6 @@ function MenuContent({ panel, onNavigate, onSelectProducts }: PanelProps) {
                 if (index === 0 || index === 3) onSelectProducts?.(index === 3);
                 onNavigate();
               },
-              onMouseEnter: () => setHighlight(index),
-              onFocus: () => setHighlight(index),
             };
             return item.department ? (
               <Link
@@ -118,36 +115,6 @@ function MenuContent({ panel, onNavigate, onSelectProducts }: PanelProps) {
               })}
             </div>
           ))}
-        </div>
-        <div className="store-menu-feature menu-enter-item" style={stagger(7)}>
-          <div className="store-menu-feature-images">
-            {CAMPAIGNS.map((campaign, index) => (
-              <img
-                key={campaign.slug}
-                src={campaign.image}
-                alt={index === feature ? campaign.title : ""}
-                aria-hidden={index !== feature}
-                width={1024}
-                height={1280}
-                className={index === feature ? "is-featured" : ""}
-              />
-            ))}
-          </div>
-          <div className="store-menu-feature-caption">
-            <p className="micro">
-              {feature === 0 ? "DROP 01 / CONCRETO DOURADO" : "HYBRD / OBJETOS E MOBILIÁRIO"}
-            </p>
-            <Button asChild size="sm" className="micro rounded-full">
-              <Link
-                to="/colecoes/$colecao"
-                params={{ colecao: CAMPAIGNS[feature].slug }}
-                search={{}}
-                onClick={onNavigate}
-              >
-                Ver <ArrowUpRight />
-              </Link>
-            </Button>
-          </div>
         </div>
       </div>
     );
