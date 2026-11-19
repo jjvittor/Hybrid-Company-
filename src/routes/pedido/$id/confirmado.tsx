@@ -1,10 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { OrderPayment } from "@/components/OrderPayment";
 import { Button } from "@/components/ui/button";
 import { YbrdLogo } from "@/components/YbrdLogo";
 import { brl, commerceRequest } from "@/lib/commerce";
-import { orderStatusLabels, type OrderDetail } from "@/lib/payment";
+import {
+  orderAccessFragment,
+  readOrderAccessFragment,
+  orderStatusLabels,
+  type OrderDetail,
+} from "@/lib/payment";
 
 export const Route = createFileRoute("/pedido/$id/confirmado")({
   validateSearch: (search: Record<string, unknown>): { acesso?: string } =>
@@ -22,7 +27,23 @@ export const Route = createFileRoute("/pedido/$id/confirmado")({
 });
 function OrderPage() {
   const { id } = Route.useParams();
-  const { acesso } = Route.useSearch();
+  const { acesso: legacyAccess } = Route.useSearch();
+  const hash = useLocation({ select: (location) => location.hash });
+  const navigate = Route.useNavigate();
+  const acesso = readOrderAccessFragment(hash) ?? legacyAccess;
+  useEffect(() => {
+    if (legacyAccess)
+      void navigate({
+        to: "/pedido/$id/confirmado",
+        params: { id },
+        search: {},
+        hash: orderAccessFragment(acesso),
+        replace: true,
+      });
+  }, [id, acesso, legacyAccess, navigate]);
+  return <OrderContent key={id + (acesso ?? "")} id={id} acesso={acesso} />;
+}
+function OrderContent({ id, acesso }: { id: string; acesso: string | undefined }) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [message, setMessage] = useState("");
   const [reason, setReason] = useState("");

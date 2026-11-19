@@ -25,3 +25,9 @@ Cadastro, recuperação e reenvio respondem com a mesma mensagem para endereços
 - Use duas contas para comprovar isolamento no banco. Tente enviar ID, papel ou campo extra no JSON. Verifique que perfis alheios e eventos de auditoria comuns não são retornados. Teste uma origem externa, JSON acima de 8 KiB, CAPTCHA repetido e os limites 5/20, incluindo solicitações paralelas. Confira que o alerta de falhas tem IP em HMAC.
 - Rode `bun audit`, `bun run test`, `bunx tsc --noEmit` e `bun run build`. Os avisos moderados remanescentes são `esbuild` (servidor de desenvolvimento do Drizzle Kit) e `minimatch` (dependência do lint).
 - Se forem acrescentados pagamentos ou webhooks, valide a assinatura no corpo bruto e registre o ID do evento com unicidade antes de processá-lo, para impedir repetição.
+
+## Verificações no domínio de produção
+
+- Configure limites de tráfego na borda, inclusive para rotas inexistentes. O limite da aplicação depende do banco e só recebe as requisições que passam pela hospedagem. Monitore respostas 429/503 e configure alertas para aumento de volume e falhas de pagamento.
+- Os novos links de convidados usam fragmento para que a credencial do pedido não seja enviada ao host no primeiro GET. Trate o link inteiro como confidencial e desative o rastreamento de cliques nos e-mails de pedido. Links antigos continuam válidos e ainda podem aparecer em registros anteriores. Restrinja o acesso a esses registros e configure o host para omitir a query da rota de pedido.
+- Faça uma restauração de backup em ambiente separado e valide o acesso ao próprio pedido com duas contas de teste distintas. Confira também o fluxo de convidado em outro navegador, incluindo atualização da página a partir do e-mail.

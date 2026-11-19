@@ -31,6 +31,14 @@ export const orderLocator = z.object({
     .regex(/^[a-f0-9]{64}$/)
     .optional(),
 });
+export function orderAccessFragment(token?: string) {
+  return token ? new URLSearchParams({ acesso: token }).toString() : "";
+}
+export function readOrderAccessFragment(fragment: string) {
+  const token = new URLSearchParams(fragment.replace(/^#/, "")).get("acesso");
+  const result = orderLocator.shape.acesso.safeParse(token);
+  return result.success ? result.data : undefined;
+}
 export const mockPaymentSchema = orderLocator.extend({
   resultado: z.enum(["aprovar", "recusar", "expirar"]),
 });

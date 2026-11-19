@@ -9,6 +9,16 @@ import { readCommerceBody } from "@/lib/commerce-db.server";
 import { addressSchema } from "@/lib/shipping";
 import { securityHeaders } from "@/lib/security-headers";
 
+import { orderAccessFragment, readOrderAccessFragment } from "@/lib/payment";
+it("mantém a credencial de convidado fora do pedido HTTP inicial", () => {
+  const token = "a".repeat(64);
+  const url = new URL("https://loja.example.test/pedido/1/confirmado");
+  url.hash = orderAccessFragment(token);
+  expect(url.pathname + url.search).not.toContain(token);
+  expect(readOrderAccessFragment(url.hash)).toBe(token);
+  expect(readOrderAccessFragment("acesso=invalido")).toBeUndefined();
+  expect(orderAccessFragment()).toBe("");
+});
 const origin = "https://loja.example.test";
 const user = "b255196e-f28a-4122-9ff5-9081829659a2";
 const session = "db8a9c27-6fe8-4b11-8f93-cce700102951";
@@ -65,6 +75,11 @@ describe("Sessões da conta na loja", () => {
   }
   it("reconhece a mesma finalidade login registrada pela autenticação", async () => {
     expect((await commerceAccount(mockSession("ok")))?.id).toBe(user);
+  });
+  it("nega decisão de sessão desconhecida mesmo com segundo fator", async () => {
+    await expect(commerceAccount(mockSession("unexpected", "aal2"))).rejects.toMatchObject({
+      status: 401,
+    });
   });
   it("rejeita sessões revogadas", async () => {
     await expect(commerceAccount(mockSession(null))).rejects.toMatchObject({ status: 401 });
@@ -124,6 +139,24 @@ describe("Limites HTTP", () => {
       "catalogo",
     );
     expect(response.status).toBe(403);
+  });
+  it("descarta operações desconhecidas antes do banco", async () => {
+    vi.stubEnv("YBRD_CHECKOUT_ENABLED", "true");
+    const upstream = vi.fn();
+    vi.stubGlobal("fetch", upstream);
+    expect((await handleCommerce(request("/api/loja/desconhecida"), "desconhecida")).status).toBe(
+      404,
+    );
+    expect(upstream).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["{}", 200],
+    ['{"extra":1}', 400],
+    [" ".repeat(16385), 413],
+  ] as const)("valida o corpo de consulta pública do catálogo (caso %#)", async (body, status) => {
+    expect((await handleCommerce(request("/api/loja/catalogo", body), "catalogo")).status).toBe(
+      status,
+    );
   });
   it("bloqueia compras e webhooks enquanto a loja está desabilitada", async () => {
     for (const operation of [

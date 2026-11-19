@@ -4,7 +4,7 @@ import { brl } from "./commerce";
 import { CommerceError, commerceRpc } from "./commerce-db.server";
 import { orderAccess, requireCommerceAccount } from "./checkout.server";
 import { mockAllowed, paymentProvider } from "./payment.server";
-import { orderStatusLabels, type adminRefund } from "./payment";
+import { orderAccessFragment, orderStatusLabels, type adminRefund } from "./payment";
 
 export async function requireAdmin(request: Request) {
   const user = await requireCommerceAccount(request);
@@ -80,7 +80,7 @@ async function sendOrderEmail(db: SupabaseClient, job: EmailJob, apiKey: string,
   const origin = process.env["YBRD_SITE_ORIGIN"];
   if (!origin) throw new Error("email origin");
   const url = new URL(`/pedido/${order.id}/confirmado`, origin);
-  if (!order.user_id) url.searchParams.set("acesso", await orderAccess(order.id, order.actor_hash));
+  if (!order.user_id) url.hash = orderAccessFragment(await orderAccess(order.id, order.actor_hash));
   const lines = [`${order.numero} · ${brl(order.total_centavos)}`];
   if (partial) lines.push(`Valor reembolsado: ${brl(detail.valor_centavos)}`);
   let qr: string | undefined;

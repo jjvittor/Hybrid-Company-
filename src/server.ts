@@ -1,4 +1,4 @@
-import "./lib/error-capture";
+if (import.meta.env.DEV) await import("./lib/error-capture");
 
 import { handleCommerce } from "./lib/commerce-http.server";
 import { handleAccount } from "./lib/account-http.server";

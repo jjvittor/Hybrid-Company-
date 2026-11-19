@@ -29,6 +29,32 @@ import {
 import { lookupCep, quoteShipping } from "./shipping.server";
 import { cepSchema, shippingInput } from "./shipping";
 const headers = { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" };
+const emptyBody = z.strictObject({});
+const reads = new Set([
+  "catalogo",
+  "politicas",
+  "enderecos",
+  "pagamento-config",
+  "pedidos",
+  "admin-pedidos",
+]);
+const operations = new Set([
+  ...reads,
+  "cep",
+  "frete",
+  "sacola",
+  "pedido-detalhe",
+  "solicitar-troca",
+  "admin-status",
+  "admin-reembolso",
+  "admin-troca",
+  "pedido-status",
+  "simular-pagamento",
+  "revisao",
+  "pagar",
+  "tarefas",
+  "webhook-mercado-pago",
+]);
 export async function handleCommerce(request: Request, operation: string, context?: unknown) {
   try {
     if (request.method !== "POST")
@@ -36,6 +62,7 @@ export async function handleCommerce(request: Request, operation: string, contex
         { message: "Método não disponível." },
         { status: 405, headers: { ...headers, Allow: "POST" } },
       );
+    if (!operations.has(operation)) throw new CommerceError(404, "Página não encontrada.");
     const enabled = process.env["YBRD_CHECKOUT_ENABLED"] === "true";
     if (operation === "webhook-mercado-pago" || operation === "tarefas") {
       if (!enabled) throw new CommerceError(503, "Loja indisponível.");
@@ -64,9 +91,14 @@ export async function handleCommerce(request: Request, operation: string, contex
       request.headers.get("sec-fetch-site") === "cross-site"
     )
       throw new CommerceError(403, "Solicitação não autorizada.");
-    if (operation === "catalogo" && !enabled) return Response.json(defaultCommerce, { headers });
+    if (operation === "catalogo" && !enabled) {
+      emptyBody.parse(await readCommerceBody(request));
+      return Response.json(defaultCommerce, { headers });
+    }
     if (!enabled || process.env["YBRD_SITE_ORIGIN"] !== origin)
       throw new CommerceError(503, "Compras ainda indisponíveis.");
+    const body = await readCommerceBody(request);
+    if (reads.has(operation)) emptyBody.parse(body);
     const db = commerceBackend();
     await commerceRate(
       db,
@@ -75,11 +107,11 @@ export async function handleCommerce(request: Request, operation: string, contex
       operation === "frete" || operation === "cep" ? 30 : 90,
     );
     if (operation === "cep") {
-      const input = z.object({ cep: cepSchema }).parse(await readCommerceBody(request));
+      const input = z.object({ cep: cepSchema }).parse(body);
       return Response.json(await lookupCep(input.cep), { headers });
     }
     if (operation === "frete") {
-      const input = shippingInput.parse(await readCommerceBody(request));
+      const input = shippingInput.parse(body);
       return Response.json(await quoteShipping(db, input.cep, input.items), { headers });
     }
     if (operation === "politicas") return Response.json(await getPolicies(db), { headers });
@@ -96,7 +128,7 @@ export async function handleCommerce(request: Request, operation: string, contex
     if (operation === "pagamento-config")
       return Response.json(await paymentConfig(db, request), { headers });
     if (operation === "pedido-detalhe") {
-      const locator = orderLocator.parse(await readCommerceBody(request));
+      const locator = orderLocator.parse(body);
       return Response.json(
         { ...(await orderDetail(db, request, locator)), mock: mockAllowed(request) },
         { headers },
@@ -114,7 +146,7 @@ export async function handleCommerce(request: Request, operation: string, contex
       return Response.json({ pedidos: result.data }, { headers });
     }
     if (operation === "solicitar-troca") {
-      const input = returnInput.parse(await readCommerceBody(request));
+      const input = returnInput.parse(body);
       const order = await authorizedOrder(db, request, input);
       await commerceRpc(db, "commerce_return", { p_order: order.id, p_reason: input.motivo });
       return Response.json({ recebido: true }, { headers });
@@ -139,7 +171,7 @@ export async function handleCommerce(request: Request, operation: string, contex
         return Response.json({ pedidos }, { headers });
       }
       if (operation === "admin-status") {
-        const input = adminTransition.parse(await readCommerceBody(request));
+        const input = adminTransition.parse(body);
         await commerceRpc(db, "commerce_admin_transition", {
           p_order: input.id,
           p_status: input.status,
@@ -149,7 +181,7 @@ export async function handleCommerce(request: Request, operation: string, contex
         return Response.json({ atualizado: true }, { headers });
       }
       if (operation === "admin-reembolso") {
-        const input = adminRefund.parse(await readCommerceBody(request));
+        const input = adminRefund.parse(body);
         return Response.json(await refundOrder(db, request, admin.id, input), { headers });
       }
       if (operation === "admin-troca") {
@@ -158,7 +190,7 @@ export async function handleCommerce(request: Request, operation: string, contex
             id: z.uuid(),
             status: z.enum(["em_analise", "aprovado", "recusado", "concluido"]),
           })
-          .parse(await readCommerceBody(request));
+          .parse(body);
         const result = await db
           .from("return_requests")
           .update({ status: input.status })
@@ -182,12 +214,12 @@ export async function handleCommerce(request: Request, operation: string, contex
       }
     }
     if (operation === "pedido-status") {
-      const locator = orderLocator.parse(await readCommerceBody(request));
+      const locator = orderLocator.parse(body);
       return Response.json(await orderPaymentView(db, request, locator), { headers });
     }
     if (operation === "simular-pagamento") {
       if (!mockAllowed(request)) throw new CommerceError(404, "Página não encontrada.");
-      const parsed = mockPaymentSchema.parse(await readCommerceBody(request));
+      const parsed = mockPaymentSchema.parse(body);
       const order = await authorizedOrder(db, request, parsed);
       const payment = await db
         .from("payments")
@@ -224,23 +256,21 @@ export async function handleCommerce(request: Request, operation: string, contex
       return Response.json(await orderPaymentView(db, request, parsed), { headers });
     }
     if (operation === "revisao" || operation === "pagar") {
-      const input = await readCommerceBody(request);
       const responseHeaders = new Headers(headers);
       if (operation === "revisao") {
-        const parsed = checkoutSchema.parse(input);
+        const parsed = checkoutSchema.parse(body);
         const actor = await orderActor(request, responseHeaders, parsed.account);
         return Response.json(await reviewCheckout(db, parsed, actor.hash), {
           headers: responseHeaders,
         });
       }
-      return Response.json(
-        await payCheckout(db, request, responseHeaders, paySchema.parse(input)),
-        { headers: responseHeaders },
-      );
+      return Response.json(await payCheckout(db, request, responseHeaders, paySchema.parse(body)), {
+        headers: responseHeaders,
+      });
     }
     if (operation === "catalogo") return Response.json(await commerceCatalog(db), { headers });
     if (operation !== "sacola") throw new CommerceError(404, "Página não encontrada.");
-    const input = cartInput.parse(await readCommerceBody(request));
+    const input = cartInput.parse(body);
     const identity = input.account ? await commerceAccount(request) : null;
     if (input.account && !identity) throw new CommerceError(401, "Entre novamente na sua conta.");
     await commerceRpc(db, "commerce_expire_orders", { p_limit: 20 });

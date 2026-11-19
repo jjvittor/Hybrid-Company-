@@ -104,7 +104,8 @@ it("revisa o total e reutiliza a chave do pedido quando o primeiro envio falha",
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: "/pedido/$id/confirmado",
       params: { id },
-      search: { acesso: "b".repeat(64) },
+      search: {},
+      hash: "acesso=" + "b".repeat(64),
     }),
   );
   const calls = mocks.request.mock.calls.filter(([name]) => name === "pagar");

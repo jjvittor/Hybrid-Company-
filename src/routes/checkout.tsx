@@ -1,5 +1,5 @@
 import { MercadoPagoCard, type CardHandle } from "@/components/MercadoPagoCard";
-import type { PaymentConfig } from "@/lib/payment";
+import { orderAccessFragment, type PaymentConfig } from "@/lib/payment";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -185,7 +185,8 @@ function CheckoutPage() {
         await navigate({
           to: "/pedido/$id/confirmado",
           params: { id: order.id },
-          search: order.acesso ? { acesso: order.acesso } : {},
+          search: {},
+          hash: orderAccessFragment(order.acesso),
         });
       }
     });

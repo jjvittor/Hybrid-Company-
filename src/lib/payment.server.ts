@@ -402,12 +402,14 @@ export async function queueMercadoPagoWebhook(db: SupabaseClient, request: Reque
   const result = webhook.safeParse(payload);
   if (!result.success || String(result.data.data.id) !== paymentId)
     throw new CommerceError(400, "Evento inválido.");
-  const saved = await db
-    .from("webhook_events")
-    .upsert(
-      { provider_event_id: `mp:${result.data.id}`, payment_reference: paymentId, payload },
-      { onConflict: "provider_event_id", ignoreDuplicates: true },
-    );
+  const saved = await db.from("webhook_events").upsert(
+    {
+      provider_event_id: `mp:${result.data.id}`,
+      payment_reference: paymentId,
+      payload: result.data,
+    },
+    { onConflict: "provider_event_id", ignoreDuplicates: true },
+  );
   if (saved.error) throw new CommerceError(503, "Evento indisponível.");
   return { recebido: true };
 }

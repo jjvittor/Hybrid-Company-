@@ -265,7 +265,7 @@ export async function handleAccount(request: Request, action: string) {
         p_user: claims.sub,
         p_purpose: purpose,
       });
-      if (!access) throw new AccountError(401, unavailable);
+      if (access !== "ok" && access !== "mfa") throw new AccountError(401, unavailable);
       writeCookies(headers, purpose, session);
       return access === "mfa";
     };
@@ -285,7 +285,7 @@ export async function handleAccount(request: Request, action: string) {
         p_user: claims.sub,
         p_purpose: purpose,
       });
-      if (!access) throw new AccountError(401, unavailable);
+      if (access !== "ok" && access !== "mfa") throw new AccountError(401, unavailable);
       if (session.access_token !== at) writeCookies(headers, purpose, session);
       return {
         client,
@@ -664,7 +664,7 @@ export async function commerceAccount(request: Request) {
     p_user: sub,
     p_purpose: "login",
   });
-  if (!access || (access === "mfa" && aal !== "aal2"))
+  if (access !== "ok" && !(access === "mfa" && aal === "aal2"))
     throw new AccountError(401, "Entre novamente na sua conta.");
   return { id: sub, client: backend(settings, token) };
 }
