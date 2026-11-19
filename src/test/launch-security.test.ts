@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { digest, orderAccess, validOrderAccess } from "@/lib/checkout.server";
+import { digest, issueOrderAccess, orderAccess, validOrderAccess } from "@/lib/checkout.server";
 import { authorizedOrder } from "@/lib/orders.server";
 import { orderAccessFragment, readOrderAccessFragment } from "@/lib/payment";
 import { verifyTurnstile } from "@/lib/turnstile.server";
@@ -47,6 +47,15 @@ it("preserva o prazo original dos links legados e a revogação administrativa",
   expect(await validOrderAccess(legacy, token, issued + ttl - 1)).toBe(true);
   expect(await validOrderAccess(legacy, token, issued + ttl)).toBe(false);
   expect(await validOrderAccess({ ...legacy, acesso_versao: 1 }, token, issued)).toBe(false);
+});
+it("uma mensagem anterior à revogação não reemite o link; o reenvio posterior continua válido", async () => {
+  const instant = (ms: number) => new Date(issued + ms).toISOString();
+  const order = { ...fixture, user_id: null, acesso_versao: 2, acesso_revogado_em: instant(1000) };
+  expect(await issueOrderAccess(order, instant(0), issued + 2000)).toBeUndefined();
+  expect(await issueOrderAccess(order, instant(1000), issued + 2000)).toBeUndefined();
+  const fresh = await issueOrderAccess(order, instant(2000), issued + 2000);
+  expect(await validOrderAccess(order, fresh!, issued + 3000)).toBe(true);
+  expect(await issueOrderAccess(order, instant(2000), issued + 2000 + ttl)).toBeUndefined();
 });
 it("exige marcador de convidado mesmo quando a conta do pedido foi excluída", async () => {
   const query = {

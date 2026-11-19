@@ -72,6 +72,26 @@ export async function orderAccess(id: string, actor: string, version: number, is
   return `v1.${expires}.${signature}`;
 }
 
+export async function issueOrderAccess(
+  order: {
+    id: string;
+    actor_hash: string;
+    user_id: string | null;
+    acesso_hash: string | null;
+    acesso_versao: number;
+    acesso_revogado_em: string | null;
+  },
+  eventTime: string,
+  now = Date.now(),
+) {
+  const issuedAt = Date.parse(eventTime);
+  if (!order.acesso_hash || order.user_id || !Number.isFinite(issuedAt)) return;
+  if (issuedAt > now || now >= issuedAt + 1000 * linkLifetime) return;
+  // An old checkout retry or delayed email must not mint a fresh-generation link.
+  if (order.acesso_revogado_em && issuedAt <= Date.parse(order.acesso_revogado_em)) return;
+  return orderAccess(order.id, order.actor_hash, order.acesso_versao, issuedAt);
+}
+
 export async function validOrderAccess(
   order: {
     id: string;

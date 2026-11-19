@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { z } from "zod";
 import { brl } from "./commerce";
 import { CommerceError, commerceRpc } from "./commerce-db.server";
-import { orderAccess, requireCommerceAccount } from "./checkout.server";
+import { issueOrderAccess, requireCommerceAccount } from "./checkout.server";
 import { mockAllowed, paymentProvider } from "./payment.server";
 import { orderAccessFragment, orderStatusLabels, type adminRefund } from "./payment";
 
@@ -61,7 +61,7 @@ async function sendOrderEmail(db: SupabaseClient, job: EmailJob, apiKey: string,
   const orderResult = await db
     .from("orders")
     .select(
-      "id,numero,email,status,user_id,actor_hash,acesso_hash,acesso_versao,total_centavos,rastreio,expira_em",
+      "id,numero,email,status,user_id,actor_hash,acesso_hash,acesso_versao,acesso_revogado_em,total_centavos,rastreio,expira_em",
     )
     .eq("id", event.data.order_id)
     .single();
@@ -85,13 +85,8 @@ async function sendOrderEmail(db: SupabaseClient, job: EmailJob, apiKey: string,
   const origin = process.env["YBRD_SITE_ORIGIN"];
   if (!origin) throw new Error("email origin");
   const url = new URL(`/pedido/${order.id}/confirmado`, origin);
-  if (!order.user_id && order.acesso_hash) {
-    const issuedAt = Date.parse(event.data.criado_em);
-    if (Date.now() < issuedAt + 86400000)
-      url.hash = orderAccessFragment(
-        await orderAccess(order.id, order.actor_hash, order.acesso_versao, issuedAt),
-      );
-  }
+  const access = await issueOrderAccess(order, event.data.criado_em);
+  if (access) url.hash = orderAccessFragment(access);
   const lines = [`${order.numero} · ${brl(order.total_centavos)}`];
   if (partial) lines.push(`Valor reembolsado: ${brl(detail.valor_centavos)}`);
   let qr: string | undefined;

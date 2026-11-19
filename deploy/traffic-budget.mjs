@@ -1,4 +1,9 @@
 import { createHmac } from "node:crypto";
+import {
+  validMaintenanceKey,
+  verifyMercadoPagoSignature,
+  webhookSecret,
+} from "../src/lib/service-signatures.server.ts";
 
 const quotas = new Map([
   ["visitors", { total: 600, perIP: 60 }],
@@ -40,6 +45,21 @@ export function withTrafficBudget(origin) {
   const fullUntil = new Map();
   return async (request, env, context) => {
     const lane = laneFor(request);
+    if (lane !== "visitors") {
+      const authorized =
+        lane === "maintenance"
+          ? validMaintenanceKey(request, env.YBRD_COMMERCE_CRON_SECRET)
+          : await verifyMercadoPagoSignature(
+              request,
+              new URL(request.url).searchParams.get("data.id") ?? "",
+              webhookSecret(env) ?? "",
+            );
+      if (!authorized)
+        return Response.json(
+          { message: "Solicitação não autorizada." },
+          { status: 401, headers: errorHeaders },
+        );
+    }
     const remaining = (fullUntil.get(lane) ?? 0) - Date.now();
     if (remaining > 0) return limited(Math.ceil(remaining / 1000));
     try {

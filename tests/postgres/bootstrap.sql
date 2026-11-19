@@ -9,6 +9,9 @@ create table auth.users (
 );
 create table auth.sessions (id uuid primary key, user_id uuid references auth.users(id));
 create table auth.mfa_factors (id uuid primary key, user_id uuid references auth.users(id), status text);
-create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
-create function auth.jwt() returns jsonb language sql stable as $$ select '{}'::jsonb $$;
+-- PostgREST normally sets these verified claims for the duration of a request.
+create function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb
+$$;
+create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
 grant usage on schema auth to service_role,authenticated,anon;

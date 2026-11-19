@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { test, mock, afterEach } from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { TrafficBudget, withTrafficBudget, runMaintenance } from "../deploy/traffic-budget.mjs";
@@ -48,10 +49,10 @@ function binding() {
     },
   };
 }
-const req = (ip, path = "/") =>
+const req = (ip, path = "/", extraHeaders = {}) =>
   new Request("https://loja.example.test" + path, {
     method: "POST",
-    headers: { "cf-connecting-ip": ip },
+    headers: { "cf-connecting-ip": ip, ...extraHeaders },
   });
 afterEach(() => mock.timers.reset());
 
@@ -79,7 +80,11 @@ test("workers independentes observam a mesma janela após recriar o objeto", asy
 });
 test("a cota compartilhada de visitantes preserva notificações e manutenção", async () => {
   mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-19T12:00:00Z") });
-  const env = { YBRD_TRAFFIC: binding() },
+  const env = {
+      YBRD_TRAFFIC: binding(),
+      YBRD_MP_TEST_WEBHOOK_SECRET: "chave-ficticia-do-provedor",
+      YBRD_COMMERCE_CRON_SECRET: "c".repeat(32),
+    },
     worker = withTrafficBudget(origin);
   const space = env.YBRD_TRAFFIC;
   space.get("visitors");
@@ -91,13 +96,35 @@ test("a cota compartilhada de visitantes preserva notificações e manutenção"
     )
     .run(Date.now());
   assert.equal((await worker(req("192.0.2.3"), env, {})).status, 429);
-  assert.equal(
-    (await worker(req("192.0.2.3", "/api/loja/webhook-mercado-pago"), env, {})).status,
-    200,
-  );
-  assert.equal((await worker(req("192.0.2.3", "/api/loja/tarefas"), env, {})).status, 200);
+  const timestamp = String(Date.now());
+  const signature = createHmac("sha256", env.YBRD_MP_TEST_WEBHOOK_SECRET)
+    .update(`id:123;request-id:fixture;ts:${timestamp};`)
+    .digest("hex");
+  const notification = req("192.0.2.3", "/api/loja/webhook-mercado-pago?data.id=123", {
+    "x-request-id": "fixture",
+    "x-signature": `ts=${timestamp},v1=${signature}`,
+  });
+  assert.equal((await worker(notification, env, {})).status, 200);
+  const maintenance = req("192.0.2.3", "/api/loja/tarefas", {
+    authorization: "Bearer " + env.YBRD_COMMERCE_CRON_SECRET,
+  });
+  assert.equal((await worker(maintenance, env, {})).status, 200);
   mock.timers.tick(60_000);
   assert.equal((await worker(req("192.0.2.3"), env, {})).status, 200);
+});
+test("cotas reservadas exigem autenticação antes de consultar o contador", async () => {
+  const space = binding();
+  const app = { fetch: mock.fn() };
+  for (const route of ["/api/loja/webhook-mercado-pago", "/api/loja/tarefas"]) {
+    const reply = await withTrafficBudget(app)(
+      req("192.0.2.9", route),
+      { YBRD_TRAFFIC: space },
+      {},
+    );
+    assert.equal(reply.status, 401);
+  }
+  assert.equal(space.stores.size, 0);
+  assert.equal(app.fetch.mock.callCount(), 0);
 });
 test("falha do contador interrompe a requisição antes da aplicação", async () => {
   const app = { fetch: mock.fn() };

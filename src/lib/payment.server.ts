@@ -1,3 +1,9 @@
+import {
+  validMaintenanceKey,
+  verifyMercadoPagoSignature,
+  webhookSecret,
+} from "./service-signatures.server";
+export { verifyMercadoPagoSignature } from "./service-signatures.server";
 import { verifyTurnstile } from "./turnstile.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -8,10 +14,9 @@ import {
   readCommerceBody,
 } from "./commerce-db.server";
 import {
-  digest,
   equalSecret,
   orderActor,
-  orderAccess,
+  issueOrderAccess,
   placeCheckout,
   signCommerce,
 } from "./checkout.server";
@@ -42,9 +47,7 @@ function gatewayCredentials() {
     publicKey:
       (sandbox ? process.env["YBRD_MP_TEST_PUBLIC_KEY"] : process.env["YBRD_MP_PUBLIC_KEY"]) ??
       null,
-    webhookSecret: sandbox
-      ? process.env["YBRD_MP_TEST_WEBHOOK_SECRET"]
-      : process.env["YBRD_MP_WEBHOOK_SECRET"],
+    webhookSecret: webhookSecret(process.env),
   };
 }
 export async function paymentConfig(db: SupabaseClient, request: Request): Promise<PaymentConfig> {
@@ -150,47 +153,6 @@ function parsePayment(raw: unknown): GatewayPayment {
     cents,
     instructions: Object.keys(instructions).length ? instructions : null,
   };
-}
-export async function verifyMercadoPagoSignature(
-  request: Request,
-  paymentId: string,
-  secret: string,
-  now = Date.now(),
-) {
-  const requestId = request.headers.get("x-request-id") ?? "";
-  const parts = new Map(
-    (request.headers.get("x-signature") ?? "").split(",").map((part) => {
-      const [key, value] = part.trim().split("=", 2);
-      return [key, value];
-    }),
-  );
-  const ts = parts.get("ts") ?? "";
-  const signature = parts.get("v1") ?? "";
-  if (
-    !secret ||
-    !/^\d{1,30}$/.test(paymentId) ||
-    !/^[A-Za-z0-9_-]{1,200}$/.test(requestId) ||
-    !/^\d{10}(\d{3})?$/.test(ts) ||
-    !/^[a-f0-9]{64}$/i.test(signature)
-  )
-    return false;
-  const stamp = Number(ts) * (ts.length === 10 ? 1000 : 1);
-  if (Math.abs(now - stamp) > 300000) return false;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["verify"],
-  );
-  const bytes = Uint8Array.from(signature.match(/../g)!.map((byte) => parseInt(byte, 16)));
-  return crypto.subtle.verify(
-    "HMAC",
-    key,
-    bytes,
-    encoder.encode(`id:${paymentId.toLowerCase()};request-id:${requestId};ts:${ts};`),
-  );
 }
 export class MercadoPago implements PaymentProvider {
   private async api(path: string, payload?: object, idempotency?: string) {
@@ -354,7 +316,7 @@ export async function payCheckout(
   const stored = await db
     .from("orders")
     .select(
-      "id,numero,email,total_centavos,expira_em,metodo,parcelas,customer_hash,endereco,acesso_versao,criado_em",
+      "id,numero,email,total_centavos,expira_em,metodo,parcelas,customer_hash,endereco,user_id,actor_hash,acesso_hash,acesso_versao,acesso_revogado_em,criado_em",
     )
     .eq("id", order.id)
     .eq("actor_hash", actor.hash)
@@ -366,13 +328,8 @@ export async function payCheckout(
     stored.data.metodo !== input.metodo
   )
     throw new CommerceError(409, "Os dados deste pedido mudaram.");
-  if (!actor.user && Date.now() < Date.parse(stored.data.criado_em) + 86400000)
-    order.acesso = await orderAccess(
-      order.id,
-      actor.hash,
-      stored.data.acesso_versao,
-      Date.parse(stored.data.criado_em),
-    );
+  const access = await issueOrderAccess(stored.data, stored.data.criado_em);
+  if (access) order.acesso = access;
   if (order.status !== "aguardando_pagamento") return order;
   if (Date.parse(stored.data.expira_em) <= Date.now()) {
     await commerceRpc(db, "commerce_expire_orders", { p_limit: 50 });
@@ -479,11 +436,6 @@ export async function processPaymentEvents(db: SupabaseClient) {
 }
 export async function checkCron(request: Request) {
   const secret = process.env["YBRD_COMMERCE_CRON_SECRET"];
-  const provided = request.headers.get("authorization") ?? "";
-  if (
-    !secret ||
-    secret.length < 32 ||
-    !equalSecret(await digest(provided), await digest(`Bearer ${secret}`))
-  )
+  if (!validMaintenanceKey(request, secret))
     throw new CommerceError(401, "Solicitação não autorizada.");
 }

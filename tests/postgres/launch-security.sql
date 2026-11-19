@@ -38,7 +38,7 @@ begin
   perform public.commerce_resend_access((first_order->>'id')::uuid,'cliente@example.test');
   assert (select count(*)=1 from public.commerce_email_outbox q join public.order_events e on e.id=q.order_event_id where e.detalhes->>'evento'='reenviar_acesso');
   perform public.commerce_revoke_access((first_order->>'id')::uuid, gen_random_uuid());
-  assert (select acesso_versao=2 from public.orders where id=(first_order->>'id')::uuid);
+  assert (select acesso_versao=2 and acesso_revogado_em is not null from public.orders where id=(first_order->>'id')::uuid);
   update public.orders set expira_em=now()-interval '1 second' where status='aguardando_pagamento';
   assert public.commerce_expire_orders(10)=2;
   assert (select estoque=4 from public.product_variants where product_id=(select id from public.products where slug='vaso-forma-areia'));
@@ -74,6 +74,26 @@ begin
   perform public.commerce_payment_update(id,'mercado-pago','test-11','recusado',amount,null);
   outcome := public.commerce_place_guarded(fixtures.order_input('cartao-1',1,true,'cartao'));
   assert outcome->>'guard'='wait' and (outcome->>'retry_after')::integer between 1 and 30;
+  for i in 3..4 loop
+    update public.order_events e set criado_em=now()-interval '3 minutes' from public.orders payer
+      where e.order_id=payer.id and payer.customer_hash=encode(sha256(convert_to('cartao-1','UTF8')),'hex')
+      and e.status='falha_pagamento' and e.anterior='aguardando_pagamento';
+    o := public.commerce_place_guarded(fixtures.order_input('cartao-1',1,true,'cartao'));
+    id := (o->>'id')::uuid;
+    select total_centavos into strict amount from public.orders where public.orders.id=(o->>'id')::uuid;
+    insert into public.payments(order_id,provider,valor_centavos) values(id,'mercado-pago',amount);
+    perform public.commerce_payment_update(id,'mercado-pago','fixture-pausa-'||i,'recusado',amount,null);
+    outcome := public.commerce_place_guarded(fixtures.order_input('cartao-1',1,true,'cartao'));
+    assert outcome->>'guard'='wait' and (outcome->>'retry_after')::integer=case when i=3 then 120 else 600 end;
+  end loop;
+  -- Age the decline fixtures while keeping the card-order network window active.
+  update public.order_events set criado_em=now()-interval '1 hour'
+    where status='falha_pagamento' and anterior='aguardando_pagamento';
+  payload := fixtures.order_input('rede',1,false,'cartao');
+  assert public.commerce_place_guarded(payload)->>'guard'='challenge';
+  outcome := public.commerce_place_guarded(payload||jsonb_build_object('network',repeat('b',64)));
+  assert outcome ? 'id';
+  update public.orders set status='expirado' where public.orders.id=(outcome->>'id')::uuid;
   outcome := public.commerce_place_guarded(fixtures.order_input('pix-independente',1,false,'pix'));
   assert outcome ? 'id';
 end $$;
@@ -107,3 +127,49 @@ begin
   exception when raise_exception then ok := sqlerrm='signup unavailable'; end;
   assert ok;
 end $$;
+
+-- Two confirmed customers use real RLS policies under the ordinary application role.
+do $$
+declare buyer uuid; sid uuid; token text; email text; label text;
+begin
+  foreach label in array array['primeiro','segundo'] loop
+    buyer := gen_random_uuid();
+    sid := gen_random_uuid();
+    token := encode(sha256(convert_to(label||sid::text,'UTF8')),'hex');
+    email := label||'@example.test';
+    perform public.ybrd_signup_ticket(email,encode(sha256(convert_to(token,'UTF8')),'hex'));
+    insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data)
+      values(buyer,email,now(),jsonb_build_object('ybrd_ticket',token,'nome',label));
+    insert into auth.sessions(id,user_id) values(sid,buyer);
+    perform public.ybrd_register_session(sid,buyer,'login');
+    insert into public.addresses(user_id,endereco) values(buyer,'{}');
+    update public.orders set user_id=buyer,acesso_hash=null
+      where customer_hash=encode(sha256(convert_to(label,'UTF8')),'hex') and status='expirado';
+    perform set_config('fixtures.'||label,jsonb_build_object('sub',buyer,'session_id',sid,'aal','aal1')::text,false);
+  end loop;
+end $$;
+set role authenticated;
+do $$
+declare label text; changed integer;
+begin
+  foreach label in array array['primeiro','segundo'] loop
+    perform set_config('request.jwt.claims',current_setting('fixtures.'||label),false);
+    assert (select count(id)=1 and bool_and(id=auth.uid()) from public.profiles);
+    assert (select count(id)=1 and bool_and(user_id=auth.uid()) from public.orders);
+    assert (select count(id)=1 and bool_and(user_id=auth.uid()) from public.addresses);
+    update public.profiles set nome='Cliente' where id<>auth.uid();
+    get diagnostics changed=row_count; assert changed=0;
+    update public.profiles set nome='Cliente' where id=auth.uid();
+    get diagnostics changed=row_count; assert changed=1;
+    assert not public.has_role('admin');
+    assert not has_table_privilege(current_user,'public.user_roles','INSERT');
+  end loop;
+end $$;
+reset role;
+delete from auth.sessions where id=(auth.jwt()->>'session_id')::uuid;
+set role authenticated;
+do $$ begin
+  assert not exists(select id from public.profiles);
+  assert not exists(select id from public.orders);
+end $$;
+reset role;

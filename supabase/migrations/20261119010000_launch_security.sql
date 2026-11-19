@@ -5,6 +5,7 @@ begin;
 alter table public.orders add column acesso_versao integer not null default 0 check (acesso_versao >= 0);
 alter table public.orders alter column acesso_versao set default 1;
 alter table public.orders add column acesso_reenviado_em timestamptz;
+alter table public.orders add column acesso_revogado_em timestamptz;
 alter table public.orders add column risco_rede text check (risco_rede ~ '^[0-9a-f]{64}$');
 
 create function public.commerce_resend_access(p_order uuid, p_email text) returns void
@@ -26,7 +27,7 @@ create function public.commerce_revoke_access(p_order uuid, p_admin uuid) return
 language plpgsql security invoker set search_path='' as $$
 declare o public.orders;
 begin
-  update public.orders set acesso_versao=acesso_versao+1
+  update public.orders set acesso_versao=acesso_versao+1, acesso_revogado_em=clock_timestamp()
     where id=p_order and user_id is null and acesso_hash is not null returning * into strict o;
   insert into public.order_events(order_id,status,detalhes)
     values(o.id,o.status,jsonb_build_object('evento','acesso_revogado','admin',p_admin));
