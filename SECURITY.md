@@ -31,3 +31,9 @@ Cadastro, recuperação e reenvio respondem com a mesma mensagem para endereços
 - Configure limites de tráfego na borda, inclusive para rotas inexistentes. O limite da aplicação depende do banco e só recebe as requisições que passam pela hospedagem. Monitore respostas 429/503 e configure alertas para aumento de volume e falhas de pagamento.
 - Os novos links de convidados usam fragmento para que a credencial do pedido não seja enviada ao host no primeiro GET. Trate o link inteiro como confidencial e desative o rastreamento de cliques nos e-mails de pedido. Links antigos continuam válidos e ainda podem aparecer em registros anteriores. Restrinja o acesso a esses registros e configure o host para omitir a query da rota de pedido.
 - Faça uma restauração de backup em ambiente separado e valide o acesso ao próprio pedido com duas contas de teste distintas. Confira também o fluxo de convidado em outro navegador, incluindo atualização da página a partir do e-mail.
+
+### Limites por minuto
+
+O Worker verifica uma janela móvel de 60 segundos antes da renderização e das APIs. Cada instância aceita até 60 requisições por IP e 600 no conjunto de visitantes. As chamadas POST de notificação de pagamento têm uma cota separada de 120 e a manutenção de 12 por minuto por instância. O excesso recebe HTTP 429 com Retry-After. Os limites específicos de conta e checkout continuam em vigor. O proxy deve sobrescrever o cabeçalho de IP confiável. Chamadas sem ele compartilham a mesma cota por IP.
+
+Esses valores são iniciais. Reinícios e réplicas têm contadores independentes, e arquivos servidos diretamente pela CDN não passam pelo Worker. Para um teto entre todas as réplicas, configure a limitação também na borda da hospedagem. Ajuste após medir latência, respostas 429 e uso do banco em homologação.

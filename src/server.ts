@@ -1,5 +1,6 @@
 if (import.meta.env.DEV) await import("./lib/error-capture");
 
+import { createRequestLimit } from "./lib/request-limit.server";
 import { handleCommerce } from "./lib/commerce-http.server";
 import { handleAccount } from "./lib/account-http.server";
 import { nonceHeader, securityHeaders } from "./lib/security-headers";
@@ -47,10 +48,23 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+const requestLimit = createRequestLimit();
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const nonce = crypto.randomUUID().replaceAll("-", "");
     const url = new URL(request.url);
+    const retryAfter = requestLimit(request, url.pathname);
+    if (retryAfter) {
+      const limited = Response.json(
+        { message: "Muitas solicitações. Aguarde um instante e tente novamente." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(retryAfter), "Cache-Control": "no-store" },
+        },
+      );
+      return securityHeaders(request, limited, nonce);
+    }
     let response: Response;
     try {
       if (url.pathname === "/sitemap.xml" && request.method === "GET") {
