@@ -46,6 +46,8 @@ function OrderPage() {
 function OrderContent({ id, acesso }: { id: string; acesso: string | undefined }) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
+  const [resendMessage, setResendMessage] = useState("");
   const [reason, setReason] = useState("");
   const [returnMessage, setReturnMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -69,10 +71,12 @@ function OrderContent({ id, acesso }: { id: string; acesso: string | undefined }
         )
           timer = setTimeout(load, data.status === "aguardando_pagamento" ? 15000 : 20000);
       } catch (error) {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
+          setOrder(null);
           setMessage(
             error instanceof Error ? error.message : "Não foi possível carregar o pedido.",
           );
+        }
       }
     };
     void load();
@@ -102,6 +106,43 @@ function OrderContent({ id, acesso }: { id: string; acesso: string | undefined }
       </Link>
       <h1 className="section-title">{order ? `Pedido ${order.numero}` : "Acompanhar pedido"}</h1>
       {message && <p role="alert">{message}</p>}
+      {!order && message && (
+        <form
+          className="grid max-w-sm gap-2"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (sending) return;
+            setSending(true);
+            try {
+              await commerceRequest("reenviar-acesso", { id, email: email.trim() });
+              setResendMessage(
+                "Se os dados corresponderem ao pedido, enviaremos um novo link ao e-mail da compra.",
+              );
+            } catch {
+              setResendMessage("Não foi possível reenviar agora. Tente novamente mais tarde.");
+            } finally {
+              setSending(false);
+            }
+          }}
+        >
+          <label className="grid gap-1 text-sm">
+            E-mail usado na compra
+            <input
+              type="email"
+              required
+              maxLength={254}
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="border border-border p-2"
+            />
+          </label>
+          <Button disabled={sending} type="submit">
+            Receber novo link
+          </Button>
+          {resendMessage && <p role="status">{resendMessage}</p>}
+        </form>
+      )}
       {!order && !message && <p role="status">Carregando pedido.</p>}
       {order && (
         <>

@@ -6,6 +6,7 @@ export class CommerceError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly options: { challenge?: boolean; retryAfter?: number } = {},
   ) {
     super(message);
   }

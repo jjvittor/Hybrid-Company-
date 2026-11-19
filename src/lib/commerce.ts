@@ -47,6 +47,7 @@ export const brl = (centavos: number) => money.format(centavos / 100);
 export function installments(total: number, minimum: number, maximum: number) {
   return Math.max(1, Math.min(maximum, Math.floor(total / Math.max(1, minimum))));
 }
+export class CheckoutChallenge extends Error {}
 export async function commerceRequest<T>(
   operation: string,
   input: object = {},
@@ -64,6 +65,8 @@ export async function commerceRequest<T>(
       : AbortSignal.timeout(20000),
   });
   const result = await response.json().catch(() => null);
+  if (response.status === 403 && result?.challenge === true)
+    throw new CheckoutChallenge(result.message);
   if (!response.ok || !result)
     throw new Error(result?.message || "Não foi possível concluir. Tente novamente.");
   return result as T;

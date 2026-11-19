@@ -16,7 +16,8 @@ export const Route = createFileRoute("/admin/pedidos")({
   component: AdminOrders,
 });
 type ReturnRow = { id: string; motivo: string; status: string };
-type AdminOrder = OrderListItem & { return_requests: ReturnRow[] };
+type Alert = { tipo: string; escopo: string; janela: string; pico: number };
+type AdminOrder = OrderListItem & { convidado: boolean; return_requests: ReturnRow[] };
 const nextStatus: Record<string, "em_separacao" | "enviado" | "entregue"> = {
   pago: "em_separacao",
   em_separacao: "enviado",
@@ -28,6 +29,7 @@ const nextLabel: Record<string, string> = {
   entregue: "Confirmar entrega",
 };
 function AdminOrders() {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [message, setMessage] = useState("Carregando pedidos.");
   const [busy, setBusy] = useState(false);
@@ -35,8 +37,13 @@ function AdminOrders() {
   const [refund, setRefund] = useState<Record<string, string>>({});
   const keys = useRef(new Map<string, string>());
   const load = useCallback(async (signal?: AbortSignal) => {
-    const data = await commerceRequest<{ pedidos: AdminOrder[] }>("admin-pedidos", {}, signal);
+    const data = await commerceRequest<{ pedidos: AdminOrder[]; alertas: Alert[] }>(
+      "admin-pedidos",
+      {},
+      signal,
+    );
     setOrders(data.pedidos);
+    setAlerts(data.alertas);
     setMessage(data.pedidos.length ? "" : "Ainda não há pedidos.");
   }, []);
   useEffect(() => {
@@ -87,6 +94,21 @@ function AdminOrders() {
           {message}
         </p>
       )}
+      {alerts.length > 0 && (
+        <section aria-label="Alertas de segurança" className="space-y-2 border border-border p-4">
+          <h2 className="micro">Alertas nas últimas 24 horas</h2>
+          <ul>
+            {alerts.map((a) => (
+              <li key={a.tipo + a.escopo + a.janela} className="text-sm">
+                {a.tipo === "recusas_cartao"
+                  ? `Cartão · ${a.pico} recusas em dez minutos`
+                  : `Reserva concentrada · ${a.escopo} · ${a.pico} unidades solicitadas ou reservadas`}{" "}
+                · {new Date(a.janela).toLocaleString("pt-BR")}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {orders.map((order) => {
         const next = nextStatus[order.status];
         return (
@@ -98,6 +120,21 @@ function AdminOrders() {
               {orderStatusLabels[order.status]}
               {order.revisao_manual ? " · Revisão manual" : ""}
             </p>
+            {order.convidado && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  void run(async () => {
+                    await commerceRequest("admin-revogar-acesso", { id: order.id });
+                    return "Links anteriores revogados.";
+                  });
+                }}
+              >
+                Revogar links de convidado
+              </Button>
+            )}
             {order.rastreio && <p className="micro">Rastreio {order.rastreio}</p>}
             {next && !order.revisao_manual && (
               <form

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Create and remove only our own local cluster. Never accepts a production URL.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export PATH="$(pg_config --bindir):$PATH"
+cluster=$(mktemp -d)
+trap 'pg_ctl -D "$cluster/data" stop -m fast >/dev/null 2>&1 || true; rm -rf -- "$cluster"' EXIT
+initdb -D "$cluster/data" -A trust -U postgres >/dev/null
+pg_ctl -D "$cluster/data" -l "$cluster/postgres.log" -o "-k $cluster -c listen_addresses=''" -w start >/dev/null
+export PGHOST="$cluster" PGPORT=5432 PGDATABASE=postgres PGUSER=postgres
+unset PGSERVICE PGSERVICEFILE PGOPTIONS PGPASSWORD PGHOSTADDR
+pg=(psql -X -v ON_ERROR_STOP=1 -q)
+"${pg[@]}" -f tests/postgres/bootstrap.sql
+for migration in supabase/migrations/*.sql; do "${pg[@]}" -f "$migration"; done
+"${pg[@]}" -f tests/postgres/launch-security.sql
+
+# Two ordinary buyers compete for a limited drop. Product locks serialize the decision.
+"${pg[@]}" -c "update public.orders set status='expirado' where status='aguardando_pagamento'"
+for buyer in primeiro segundo; do
+  "${pg[@]}" -Atc "set role service_role; select public.commerce_place_guarded(fixtures.order_input('concorrente-$buyer',1,false))" > "$cluster/$buyer" &
+  if [[ $buyer == primeiro ]]; then first=$!; else second=$!; fi
+done
+wait "$first"
+wait "$second"
+"${pg[@]}" -c "do \$\$ begin assert (select count(*) from public.stock_reservations)=1; end \$\$"
+echo "PostgreSQL checks passed, including two concurrent checkouts."

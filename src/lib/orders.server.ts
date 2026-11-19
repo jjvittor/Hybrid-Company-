@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { commerceAccount } from "./account-http.server";
-import { digest, equalSecret, orderActor } from "./checkout.server";
+import { equalSecret, orderActor, validOrderAccess } from "./checkout.server";
 import { CommerceError } from "./commerce-db.server";
 import type { OrderPaymentView } from "./payment";
 
@@ -12,8 +12,10 @@ export async function authorizedOrder(db: SupabaseClient, request: Request, loca
   if (data.user_id) {
     const user = await commerceAccount(request).catch(() => null);
     if (user?.id !== data.user_id) throw denied;
-  } else if (locator.acesso && data.acesso_hash) {
-    if (!equalSecret(await digest(locator.acesso), data.acesso_hash)) throw denied;
+  } else if (!data.acesso_hash) {
+    throw denied;
+  } else if (locator.acesso) {
+    if (!(await validOrderAccess(data, locator.acesso))) throw denied;
   } else {
     const guest = await orderActor(request, new Headers(), false);
     if (!equalSecret(guest.hash, data.actor_hash)) throw denied;

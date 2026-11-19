@@ -54,13 +54,15 @@ type EmailJob = { id: string; order_event_id: number; tentativas: number };
 async function sendOrderEmail(db: SupabaseClient, job: EmailJob, apiKey: string, from: string) {
   const event = await db
     .from("order_events")
-    .select("order_id,status,detalhes")
+    .select("order_id,status,detalhes,criado_em")
     .eq("id", job.order_event_id)
     .single();
   if (event.error) throw new Error("email event");
   const orderResult = await db
     .from("orders")
-    .select("id,numero,email,status,user_id,actor_hash,total_centavos,rastreio,expira_em")
+    .select(
+      "id,numero,email,status,user_id,actor_hash,acesso_hash,acesso_versao,total_centavos,rastreio,expira_em",
+    )
     .eq("id", event.data.order_id)
     .single();
   if (orderResult.error) throw new Error("email order");
@@ -70,17 +72,26 @@ async function sendOrderEmail(db: SupabaseClient, job: EmailJob, apiKey: string,
   if (pix && (order.status !== "aguardando_pagamento" || Date.parse(order.expira_em) <= Date.now()))
     return;
   const partial = detail?.evento === "reembolso_parcial";
-  const subject = pix
-    ? "Pix pendente"
-    : partial
-      ? "Reembolso parcial confirmado"
-      : event.data.status === "aguardando_pagamento"
-        ? "Pedido recebido"
-        : (orderStatusLabels[event.data.status] ?? "Atualização do pedido");
+  const subject =
+    detail?.evento === "reenviar_acesso"
+      ? "Novo link para acompanhar seu pedido"
+      : pix
+        ? "Pix pendente"
+        : partial
+          ? "Reembolso parcial confirmado"
+          : event.data.status === "aguardando_pagamento"
+            ? "Pedido recebido"
+            : (orderStatusLabels[event.data.status] ?? "Atualização do pedido");
   const origin = process.env["YBRD_SITE_ORIGIN"];
   if (!origin) throw new Error("email origin");
   const url = new URL(`/pedido/${order.id}/confirmado`, origin);
-  if (!order.user_id) url.hash = orderAccessFragment(await orderAccess(order.id, order.actor_hash));
+  if (!order.user_id && order.acesso_hash) {
+    const issuedAt = Date.parse(event.data.criado_em);
+    if (Date.now() < issuedAt + 86400000)
+      url.hash = orderAccessFragment(
+        await orderAccess(order.id, order.actor_hash, order.acesso_versao, issuedAt),
+      );
+  }
   const lines = [`${order.numero} · ${brl(order.total_centavos)}`];
   if (partial) lines.push(`Valor reembolsado: ${brl(detail.valor_centavos)}`);
   let qr: string | undefined;

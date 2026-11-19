@@ -236,7 +236,13 @@ describe("Autorização de pedidos", () => {
   });
   it("rejeita token incorreto e aceita somente o segredo correspondente ao pedido de convidado", async () => {
     const access = "a".repeat(64);
-    const db = database({ id: session, user_id: null, acesso_hash: await digest(access) });
+    const db = database({
+      id: session,
+      user_id: null,
+      acesso_hash: await digest(access),
+      acesso_versao: 0,
+      criado_em: new Date().toISOString(),
+    });
     await expect(
       authorizedOrder(db, request("/api/loja/pedido-detalhe"), {
         id: session,

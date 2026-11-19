@@ -9,7 +9,10 @@ export const cardPayment = z.object({
     .regex(/^\d{1,20}$/)
     .optional(),
 });
-export const paySchema = placeOrderSchema.extend({ card: cardPayment.optional() });
+export const paySchema = placeOrderSchema.extend({
+  card: cardPayment.optional(),
+  captcha: z.string().min(1).max(2048).optional(),
+});
 export type CardPayment = z.infer<typeof cardPayment>;
 export type PaymentConfig = {
   pix: boolean;
@@ -28,7 +31,7 @@ export const orderLocator = z.object({
   id: z.uuid(),
   acesso: z
     .string()
-    .regex(/^[a-f0-9]{64}$/)
+    .regex(/^(?:v1\.[0-9]{10}\.)?[a-f0-9]{64}$/)
     .optional(),
 });
 export function orderAccessFragment(token?: string) {

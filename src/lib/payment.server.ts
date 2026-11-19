@@ -1,3 +1,4 @@
+import { verifyTurnstile } from "./turnstile.server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
@@ -6,7 +7,14 @@ import {
   commerceSettings,
   readCommerceBody,
 } from "./commerce-db.server";
-import { digest, equalSecret, orderActor, placeCheckout, signCommerce } from "./checkout.server";
+import {
+  digest,
+  equalSecret,
+  orderActor,
+  orderAccess,
+  placeCheckout,
+  signCommerce,
+} from "./checkout.server";
 import { decimalCentavos } from "./shipping.server";
 import {
   type CardPayment,
@@ -322,17 +330,32 @@ export async function payCheckout(
   request: Request,
   headers: Headers,
   input: z.infer<typeof paySchema>,
+  network: string,
 ) {
   const config = await paymentConfig(db, request);
   if (!config[input.metodo]) throw new CommerceError(503, "Este pagamento está indisponível.");
   if (input.metodo === "cartao" && !config.mock && !input.card)
     throw new CommerceError(422, "Confira os dados do cartão.");
   const actor = await orderActor(request, headers, input.account);
-  const order = await placeCheckout(db, input, actor);
-  if (order.status !== "aguardando_pagamento") return order;
+  let verified = false;
+  if (input.captcha) {
+    const ip =
+      request.headers.get(process.env["YBRD_TRUSTED_IP_HEADER"] ?? "cf-connecting-ip") ?? "";
+    verified = await verifyTurnstile(
+      input.captcha,
+      new URL(request.url).hostname,
+      ip,
+      "ybrd-checkout",
+    );
+    if (!verified)
+      throw new CommerceError(403, "Refaça a verificação de segurança.", { challenge: true });
+  }
+  const order = await placeCheckout(db, input, actor, { network, verified });
   const stored = await db
     .from("orders")
-    .select("id,numero,email,total_centavos,expira_em,metodo,parcelas,customer_hash,endereco")
+    .select(
+      "id,numero,email,total_centavos,expira_em,metodo,parcelas,customer_hash,endereco,acesso_versao,criado_em",
+    )
     .eq("id", order.id)
     .eq("actor_hash", actor.hash)
     .single();
@@ -343,6 +366,14 @@ export async function payCheckout(
     stored.data.metodo !== input.metodo
   )
     throw new CommerceError(409, "Os dados deste pedido mudaram.");
+  if (!actor.user && Date.now() < Date.parse(stored.data.criado_em) + 86400000)
+    order.acesso = await orderAccess(
+      order.id,
+      actor.hash,
+      stored.data.acesso_versao,
+      Date.parse(stored.data.criado_em),
+    );
+  if (order.status !== "aguardando_pagamento") return order;
   if (Date.parse(stored.data.expira_em) <= Date.now()) {
     await commerceRpc(db, "commerce_expire_orders", { p_limit: 50 });
     return { ...order, status: "expirado" };
@@ -377,6 +408,13 @@ export async function payCheckout(
     );
     return { ...order, status };
   }
+  if (
+    input.metodo === "cartao" &&
+    !(await commerceRpc<boolean>(db, "commerce_claim_card", { p_order: order.id }))
+  )
+    throw new CommerceError(429, "Pagamento em processamento. Aguarde antes de tentar novamente.", {
+      retryAfter: 30,
+    });
   const provider = paymentProvider(request);
   const charge: Charge = { ...stored.data, cpf: input.contato.cpf };
   const payment =

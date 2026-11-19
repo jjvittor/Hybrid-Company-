@@ -44,6 +44,8 @@ const operations = new Set([
   "frete",
   "sacola",
   "pedido-detalhe",
+  "reenviar-acesso",
+  "admin-revogar-acesso",
   "solicitar-troca",
   "admin-status",
   "admin-reembolso",
@@ -100,11 +102,11 @@ export async function handleCommerce(request: Request, operation: string, contex
     const body = await readCommerceBody(request);
     if (reads.has(operation)) emptyBody.parse(body);
     const db = commerceBackend();
-    await commerceRate(
+    const network = await commerceRate(
       db,
       request,
       operation,
-      operation === "frete" || operation === "cep" ? 30 : 90,
+      operation === "reenviar-acesso" ? 5 : operation === "frete" || operation === "cep" ? 30 : 90,
     );
     if (operation === "cep") {
       const input = z.object({ cep: cepSchema }).parse(body);
@@ -127,6 +129,11 @@ export async function handleCommerce(request: Request, operation: string, contex
     }
     if (operation === "pagamento-config")
       return Response.json(await paymentConfig(db, request), { headers });
+    if (operation === "reenviar-acesso") {
+      const input = z.strictObject({ id: z.uuid(), email: z.email().max(254) }).parse(body);
+      await commerceRpc(db, "commerce_resend_access", { p_order: input.id, p_email: input.email });
+      return Response.json({ recebido: true }, { headers });
+    }
     if (operation === "pedido-detalhe") {
       const locator = orderLocator.parse(body);
       return Response.json(
@@ -153,22 +160,35 @@ export async function handleCommerce(request: Request, operation: string, contex
     }
     if (operation.startsWith("admin-")) {
       const admin = await requireAdmin(request);
+      if (operation === "admin-revogar-acesso") {
+        const { id } = z.strictObject({ id: z.uuid() }).parse(body);
+        await commerceRpc(db, "commerce_revoke_access", { p_order: id, p_admin: admin.id });
+        return Response.json({ revogado: true }, { headers });
+      }
       if (operation === "admin-pedidos") {
         const result = await db
           .from("orders")
           .select(
-            "id,numero,status,total_centavos,criado_em,rastreio,revisao_manual,payments(payment_refunds(id,valor_centavos,status)),return_requests(id,motivo,status,criado_em)",
+            "id,numero,status,total_centavos,criado_em,rastreio,revisao_manual,user_id,acesso_hash,payments(payment_refunds(id,valor_centavos,status)),return_requests(id,motivo,status,criado_em)",
           )
           .order("criado_em", { ascending: false })
           .limit(100);
         if (result.error) throw new CommerceError(503, "Não foi possível carregar os pedidos.");
-        const pedidos = result.data.map(({ payments, ...order }) => ({
+        const pedidos = result.data.map(({ payments, acesso_hash, user_id, ...order }) => ({
+          convidado: !user_id && Boolean(acesso_hash),
           ...order,
           refund: (Array.isArray(payments) ? payments[0] : payments)?.payment_refunds?.find(
             (refund: { status: string }) => refund.status === "pendente",
           ),
         }));
-        return Response.json({ pedidos }, { headers });
+        const alerts = await db
+          .from("commerce_security_alerts")
+          .select("tipo,escopo,janela,pico")
+          .gte("janela", new Date(Date.now() - 86400000).toISOString())
+          .order("janela", { ascending: false })
+          .limit(20);
+        if (alerts.error) throw new CommerceError(503, "Não foi possível consultar os alertas.");
+        return Response.json({ pedidos, alertas: alerts.data }, { headers });
       }
       if (operation === "admin-status") {
         const input = adminTransition.parse(body);
@@ -264,9 +284,12 @@ export async function handleCommerce(request: Request, operation: string, contex
           headers: responseHeaders,
         });
       }
-      return Response.json(await payCheckout(db, request, responseHeaders, paySchema.parse(body)), {
-        headers: responseHeaders,
-      });
+      return Response.json(
+        await payCheckout(db, request, responseHeaders, paySchema.parse(body), network),
+        {
+          headers: responseHeaders,
+        },
+      );
     }
     if (operation === "catalogo") return Response.json(await commerceCatalog(db), { headers });
     if (operation !== "sacola") throw new CommerceError(404, "Página não encontrada.");
@@ -288,8 +311,19 @@ export async function handleCommerce(request: Request, operation: string, contex
       { headers },
     );
   } catch (error) {
-    if (error instanceof CommerceError || error instanceof AccountError)
-      return Response.json({ message: error.message }, { status: error.status, headers });
+    if (error instanceof CommerceError || error instanceof AccountError) {
+      const options = error instanceof CommerceError ? error.options : {};
+      return Response.json(
+        { message: error.message, ...(options.challenge ? { challenge: true } : {}) },
+        {
+          status: error.status,
+          headers: {
+            ...headers,
+            ...(options.retryAfter ? { "Retry-After": String(options.retryAfter) } : {}),
+          },
+        },
+      );
+    }
     if (error instanceof z.ZodError)
       return Response.json({ message: "Confira os dados informados." }, { status: 400, headers });
     return Response.json(

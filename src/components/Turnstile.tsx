@@ -30,7 +30,13 @@ function loadTurnstile() {
   return loader;
 }
 
-export function Turnstile({ onToken }: { onToken: (token: string) => void }) {
+export function Turnstile({
+  onToken,
+  action = "ybrd-account",
+}: {
+  onToken: (token: string) => void;
+  action?: "ybrd-account" | "ybrd-checkout";
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
   const sitekey = import.meta.env["VITE_YBRD_TURNSTILE_SITE_KEY"];
@@ -45,7 +51,7 @@ export function Turnstile({ onToken }: { onToken: (token: string) => void }) {
           api,
           id: api.render(ref.current, {
             sitekey,
-            action: "ybrd-account",
+            action,
             language: "pt-br",
             size: "flexible",
             callback: onToken,
@@ -64,7 +70,7 @@ export function Turnstile({ onToken }: { onToken: (token: string) => void }) {
       active = false;
       if (widget) widget.api.remove(widget.id);
     };
-  }, [onToken, sitekey]);
+  }, [onToken, sitekey, action]);
   return (
     <div>
       <div ref={ref} />

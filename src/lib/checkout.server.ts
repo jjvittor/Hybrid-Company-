@@ -63,8 +63,47 @@ export async function orderActor(request: Request, headers: Headers, account: bo
     );
   return { user: null, hash: await signCommerce(`guest:${token}`) };
 }
-export const orderAccess = (id: string, actorHash: string) =>
-  signCommerce(`order:${id}:${actorHash}`);
+const linkLifetime = 24 * 60 * 60;
+export async function orderAccess(id: string, actor: string, version: number, issuedAt: number) {
+  if (!Number.isSafeInteger(version) || version < 0 || !Number.isFinite(issuedAt))
+    throw new CommerceError(503, "Acesso ao pedido indisponível.");
+  const expires = Math.floor(issuedAt / 1000) + linkLifetime;
+  const signature = await signCommerce(`order-link:v1:${id}:${actor}:${version}:${expires}`);
+  return `v1.${expires}.${signature}`;
+}
+
+export async function validOrderAccess(
+  order: {
+    id: string;
+    actor_hash: string;
+    acesso_versao: number;
+    acesso_hash: string;
+    criado_em: string;
+  },
+  token: string,
+  now = Date.now(),
+) {
+  if (!Number.isSafeInteger(order.acesso_versao) || order.acesso_versao < 0 || !order.acesso_hash)
+    return false;
+  if (/^[a-f0-9]{64}$/.test(token)) {
+    const created = Date.parse(order.criado_em);
+    return (
+      order.acesso_versao === 0 &&
+      created <= now &&
+      now < created + 1000 * linkLifetime &&
+      equalSecret(await digest(token), order.acesso_hash)
+    );
+  }
+  const match = /^v1\.([0-9]{10})\.([a-f0-9]{64})$/.exec(token);
+  if (!match) return false;
+  const expires = Number(match[1]);
+  const current = Math.floor(now / 1000);
+  if (expires <= current || expires > current + linkLifetime) return false;
+  const signature = await signCommerce(
+    `order-link:v1:${order.id}:${order.actor_hash}:${order.acesso_versao}:${expires}`,
+  );
+  return equalSecret(match[2]!, signature);
+}
 export async function getPolicies(db: SupabaseClient) {
   const settings = await commerceSettings(db);
   const policies = merchantPolicies.safeParse(settings.get("politicas_loja"));
@@ -112,6 +151,7 @@ export async function placeCheckout(
   db: SupabaseClient,
   input: z.infer<typeof placeOrderSchema>,
   actor: Awaited<ReturnType<typeof orderActor>>,
+  risk: { network: string; verified: boolean },
 ): Promise<PlacedOrder> {
   const prior = await db
     .from("orders")
@@ -124,21 +164,25 @@ export async function placeCheckout(
     return {
       ...prior.data,
       repetido: true,
-      ...(actor.user ? {} : { acesso: await orderAccess(prior.data.id, actor.hash) }),
     };
   const { reviewToken, frete, ...price } = await reviewCheckout(db, input, actor.hash);
   if (!equalSecret(reviewToken, input.reviewToken))
     throw new CommerceError(409, "Os valores mudaram. Revise o pedido novamente.");
   const id = crypto.randomUUID();
-  const access = actor.user ? null : await orderAccess(id, actor.hash);
-  const order = await commerceRpc<PlacedOrder>(db, "commerce_place", {
+  // New links use a signed expiration and a per-order generation. Keep a guest marker for legacy rows.
+  const guestMarker = actor.user ? null : await digest(crypto.randomUUID());
+  const order = await commerceRpc<
+    PlacedOrder | { guard: "challenge" | "wait" | "quantity"; retry_after?: number }
+  >(db, "commerce_place_guarded", {
     p_input: {
       actor: actor.hash,
       customer: await signCommerce(`cpf:${input.contato.cpf}`),
       user: actor.user,
       order: id,
       idempotencia: input.idempotencia,
-      access: access ? await digest(access) : null,
+      access: guestMarker,
+      network: risk.network,
+      human_verified: risk.verified,
       email: input.contato.email,
       cpf_final: input.contato.cpf.slice(-4),
       endereco: input.endereco,
@@ -151,5 +195,17 @@ export async function placeCheckout(
       salvar: input.salvarEndereco,
     },
   });
-  return { ...order, ...(actor.user ? {} : { acesso: await orderAccess(order.id, actor.hash) }) };
+  if ("guard" in order) {
+    if (order.guard === "challenge")
+      throw new CommerceError(403, "Confirme a verificação de segurança.", { challenge: true });
+    if (order.guard === "wait")
+      throw new CommerceError(429, "Aguarde antes de tentar pagar novamente.", {
+        retryAfter: order.retry_after ?? 60,
+      });
+    throw new CommerceError(
+      409,
+      "Durante a alta procura, escolha até duas unidades da mesma peça.",
+    );
+  }
+  return order;
 }

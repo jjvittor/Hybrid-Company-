@@ -1,3 +1,4 @@
+import { verifyTurnstile } from "./turnstile.server";
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
@@ -58,11 +59,12 @@ function config() {
   return { origin, url, key, pepper, ipHeader };
 }
 
-function backend(settings: ReturnType<typeof config>, jwt?: string) {
+function backend(settings: ReturnType<typeof config>, jwt?: string, trustedIp?: string) {
   return createClient(settings.url, settings.key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     ...(jwt ? { accessToken: async () => jwt } : {}),
     global: {
+      ...(trustedIp ? { headers: { "Sb-Forwarded-For": trustedIp } } : {}),
       fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(8000) }),
     },
   });
@@ -115,20 +117,8 @@ async function checkCaptcha(request: Request, ip: string, token?: string) {
   const secret = process.env["YBRD_TURNSTILE_SECRET"];
   if (!secret) throw new AccountError(503, "A verificação de segurança está indisponível.");
   if (!token) throw new AccountError(403, "Conclua a verificação de segurança.", true);
-  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    body: new URLSearchParams({ secret, response: token, remoteip: ip }),
-    signal: AbortSignal.timeout(5000),
-  });
-  const data = await response.json();
-  if (
-    !response.ok ||
-    data.success !== true ||
-    data.hostname !== new URL(request.url).hostname ||
-    data.action !== "ybrd-account"
-  ) {
+  if (!(await verifyTurnstile(token, new URL(request.url).hostname, ip, "ybrd-account")))
     throw new AccountError(403, "Conclua a verificação de segurança.", true);
-  }
 }
 
 function cookieName(purpose: Purpose, type: "at" | "rt") {
@@ -226,7 +216,7 @@ export async function handleAccount(request: Request, action: string) {
         operation === "login" ? invalidLoginMessage : "Verifique os dados informados.";
       return reply({ message: invalidPublicInput }, 400);
     }
-    const admin = backend(settings);
+    const admin = backend(settings, undefined, ip);
 
     const rate = async (
       bucket: string,
@@ -274,7 +264,7 @@ export async function handleAccount(request: Request, action: string) {
       const at = readCookie(request, cookieName(purpose, "at"));
       const rt = readCookie(request, cookieName(purpose, "rt"));
       if (!at || !rt) throw new AccountError(401, unavailable);
-      const client = backend(settings);
+      const client = backend(settings, undefined, ip);
       const { data, error } = await client.auth.setSession({ access_token: at, refresh_token: rt });
       if (error || !data.session || !data.user?.email_confirmed_at)
         throw new AccountError(401, unavailable);
@@ -337,10 +327,20 @@ export async function handleAccount(request: Request, action: string) {
       try {
         if (operation === "signup" && !disposable.has(auth.email.split("@")[1] ?? "")) {
           const { email, nome, password } = actions.signup.parse(input);
+          const ticket = hex(crypto.getRandomValues(new Uint8Array(32)));
+          await rpc(admin, "ybrd_signup_ticket", {
+            p_email: email,
+            p_hash: hex(
+              new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(ticket))),
+            ),
+          });
           const { data } = await admin.auth.signUp({
             email,
             password,
-            options: { data: { nome }, emailRedirectTo: settings.origin + "/entrar" },
+            options: {
+              data: { nome, ybrd_ticket: ticket },
+              emailRedirectTo: settings.origin + "/entrar",
+            },
           });
           if (data.session) {
             await admin.auth.admin.signOut(data.session.access_token, "local");
@@ -507,7 +507,7 @@ export async function handleAccount(request: Request, action: string) {
     if (needsMfa) throw new AccountError(403, "Confirme a verificação em duas etapas.");
     const reauthenticate = async (current: string) => {
       if (!user.email) throw new AccountError(403, unavailable);
-      const fresh = backend(settings);
+      const fresh = backend(settings, undefined, ip);
       const { data, error } = await fresh.auth.signInWithPassword({
         email: user.email,
         password: current,

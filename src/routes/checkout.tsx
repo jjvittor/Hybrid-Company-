@@ -1,3 +1,4 @@
+import { Turnstile } from "@/components/Turnstile";
 import { MercadoPagoCard, type CardHandle } from "@/components/MercadoPagoCard";
 import { orderAccessFragment, type PaymentConfig } from "@/lib/payment";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -7,7 +8,7 @@ import { YbrdLogo } from "@/components/YbrdLogo";
 import { useAccount } from "@/components/AccountProvider";
 import { useStorefrontCart } from "@/components/StorefrontCart";
 import { AddressFields, commerceInputClass } from "@/components/ShippingFields";
-import { brl, commerceRequest } from "@/lib/commerce";
+import { brl, commerceRequest, CheckoutChallenge } from "@/lib/commerce";
 import {
   cartPayload,
   checkoutSchema,
@@ -62,6 +63,9 @@ function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const attempt = useRef<string | undefined>(undefined);
   const sending = useRef(false);
+  const [challenge, setChallenge] = useState(false);
+  const [captcha, setCaptcha] = useState("");
+  const [widgetKey, setWidgetKey] = useState(0);
   const isAccount = Boolean(user?.email);
   const items = cartPayload(cart);
 
@@ -110,6 +114,11 @@ function CheckoutPage() {
     try {
       await action();
     } catch (error) {
+      if (error instanceof CheckoutChallenge || captcha) {
+        setChallenge(true);
+        setCaptcha("");
+        setWidgetKey((value) => value + 1);
+      }
       setMessage(
         error instanceof Error ? error.message : "Não foi possível concluir. Tente novamente.",
       );
@@ -176,6 +185,7 @@ function CheckoutPage() {
             : undefined;
         const order = await commerceRequest<PlacedOrder>("pagar", {
           card,
+          ...(captcha ? { captcha } : {}),
           ...buildInput(),
           reviewToken: review.reviewToken,
           idempotencia: attempt.current,
@@ -485,6 +495,9 @@ function CheckoutPage() {
                       </select>
                     </label>
                   )}
+                  {challenge && (
+                    <Turnstile key={widgetKey} action="ybrd-checkout" onToken={setCaptcha} />
+                  )}
                   <label className="flex items-start gap-2 text-sm">
                     <input
                       type="checkbox"
@@ -527,6 +540,8 @@ function CheckoutPage() {
                     disabled={busy}
                     onClick={() => {
                       setStep(step - 1);
+                      setChallenge(false);
+                      setCaptcha("");
                       setReview(null);
                       setAccepted(false);
                       setMessage("");
@@ -539,7 +554,9 @@ function CheckoutPage() {
                   type="submit"
                   className="rounded-full"
                   disabled={
-                    busy || (step >= 2 && !paymentConfig?.[method]) || (step === 3 && !accepted)
+                    busy ||
+                    (step >= 2 && !paymentConfig?.[method]) ||
+                    (step === 3 && (!accepted || (challenge && !captcha)))
                   }
                 >
                   {busy

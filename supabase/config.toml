@@ -13,7 +13,18 @@ enable_confirmations = true
 double_confirm_changes = true
 secure_password_change = true
 otp_expiry = 1800
+max_frequency = "60s"
 
 [auth.mfa.totp]
 enroll_enabled = true
 verify_enabled = true
+
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(YBRD_TURNSTILE_SECRET)"
+
+[auth.rate_limit]
+email_sent = 30
+sign_in_sign_ups = 20
+token_verifications = 20
