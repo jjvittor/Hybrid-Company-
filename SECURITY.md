@@ -23,8 +23,8 @@ Cadastro, recuperação e reenvio respondem com a mesma mensagem para endereços
 - Em duas abas ou dispositivos, verifique renovação rotativa, saída local, saída global e redefinição de senha. Após troca de senha, confirme que as outras sessões falham e que o aviso chega. Confirme a troca de e-mail nos dois endereços e confira a notificação. Teste exclusão com senha errada e depois com a senha correta.
 - Teste 2FA com código válido, inválido e expirado. Antes do segundo fator, tente chamar a API de perfil. Gere códigos de recuperação, use um deles após digitar a senha e verifique revogação das sessões e rejeição do código já usado. Teste também o reset por e-mail com TOTP ativo.
 - Use duas contas para comprovar isolamento no banco. Tente enviar ID, papel ou campo extra no JSON. Verifique que perfis alheios e eventos de auditoria comuns não são retornados. Teste uma origem externa, JSON acima de 8 KiB, CAPTCHA repetido e os limites 5/20, incluindo solicitações paralelas. Confira que o alerta de falhas tem IP em HMAC.
-- Rode `bun audit`, `bun run test`, `bunx tsc --noEmit` e `bun run build`. Os avisos moderados remanescentes são `esbuild` (servidor de desenvolvimento do Drizzle Kit) e `minimatch` (dependência do lint).
-- Se forem acrescentados pagamentos ou webhooks, valide a assinatura no corpo bruto e registre o ID do evento com unicidade antes de processá-lo, para impedir repetição.
+- O GitHub Actions audita as versões do `bun.lock` e verifica a instalação limpa, os testes, o TypeScript, o lint e o build. Um aviso de severidade alta ou crítica no registro interrompe a verificação. Para consultar também as severidades menores, execute `bun audit`.
+- No sandbox do Mercado Pago, confirme a assinatura e a janela de tempo das notificações. O ID único do evento e a reconciliação com o provedor devem produzir uma única mudança de estado, inclusive quando uma notificação é reenviada.
 
 ## Verificações no domínio de produção
 

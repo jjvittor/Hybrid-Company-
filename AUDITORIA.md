@@ -29,3 +29,9 @@ Base examinada: branch `checkout-sacola`, commit `db8fd65`.
 - Permanecem nove avisos ESLint sobre Fast Refresh em módulos que exportam componentes e utilitários. Não são erros de compilação.
 - A árvore node_modules preexistente contém esbuild 0.25.12 incompatível com a faixa declarada pelo Vite instalado. O build funcionou, mas uma instalação limpa pelo lockfile deve ser validada no ambiente de integração. Não foram alteradas dependências ou lockfile.
 - Permanecem avisos de build de plugins/dependências. O build de produção concluiu. A auditoria não substitui teste de carga, pentest externo, avaliação completa de acessibilidade ou homologação em dispositivos móveis.
+
+## Revalidação das proteções de lançamento
+
+Na branch `checkout-sacola`, 93 testes da aplicação e cinco do limitador passaram. Em um PostgreSQL temporário, todas as migrações foram aplicadas. As verificações cobriram dois compradores concorrentes, expiração de reserva, as três pausas de cartão, reenvio e revogação de links e isolamento de perfis, endereços e pedidos entre duas sessões de clientes. A perda da sessão removeu o acesso aos dados protegidos.
+
+O Worker compilado passou por 28 verificações locais, incluindo os oito produtos, duas coleções e as respostas de autenticação e indisponibilidade de serviço. A homologação do domínio, do CAPTCHA, do envio de e-mail e do provedor de pagamento continua dependente das configurações externas. A política de retenção dos dados dos pedidos após a exclusão de conta continua pendente.
