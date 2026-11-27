@@ -28,7 +28,7 @@ wait "$second"
 # Both buyers have completed the normal verification and request the last physical unit.
 "${pg[@]}" <<'SQL'
 update public.product_variants set estoque=1 where product_id=(select id from public.products where slug='vaso-forma-areia');
-create function fixtures.buy_last(label text) returns text language plpgsql as $
+create function fixtures.buy_last(label text) returns text language plpgsql as $buy$
 declare result jsonb;
 begin
   result := public.commerce_place_guarded(fixtures.order_input(label,1,true));
@@ -37,7 +37,7 @@ begin
 exception when raise_exception then
   if sqlerrm='commerce_out_of_stock' then return 'sold-out'; end if;
   raise;
-end $;
+end $buy$;
 SQL
 for buyer in primeiro segundo; do
   "${pg[@]}" -Atc "set role service_role; select fixtures.buy_last('ultima-$buyer')" > "$cluster/$buyer" &

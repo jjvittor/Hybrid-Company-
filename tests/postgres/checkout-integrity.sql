@@ -36,6 +36,21 @@ begin
   exception when raise_exception then
     if sqlerrm<>'commerce_coupon_account' then raise; end if;
   end;
+  begin
+    perform public.commerce_price_for_account(input->'items',0,'CONTA-TESTE',input->>'customer','pix',
+      (select id from auth.users where email='aprovado@example.test' and email_confirmed_at is null));
+    raise exception 'unconfirmed account received personal coupon';
+  exception when raise_exception then
+    if sqlerrm<>'commerce_coupon_account' then raise; end if;
+  end;
+  foreach expected_error in array array['0','100'] loop
+    begin
+      perform public.commerce_price(jsonb_set(input->'items','{0,quantity}',expected_error::jsonb),0,'',input->>'customer','pix');
+      raise exception 'invalid quantity accepted';
+    exception when raise_exception then
+      if sqlerrm<>'commerce_out_of_stock' then raise; end if;
+    end;
+  end loop;
   quote := public.commerce_price_for_account(input->'items',0,'CONTA-TESTE',input->>'customer','pix',buyer);
   input := input || jsonb_build_object('cupom','CONTA-TESTE','expected',quote,'user',buyer,'access',null);
   actual := public.commerce_place_guarded(input);
