@@ -1,6 +1,6 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,7 +40,17 @@ async function check() {
     const archive = join(dir, "scanner.tar.gz");
     writeFileSync(archive, bytes, { mode: 0o600 });
     execFileSync("tar", ["-xzf", archive, "-C", dir, "gitleaks"]);
-    execFileSync(join(dir, "gitleaks"), opts, { cwd: root, stdio: "inherit" });
+    const report = join(dir, "relatorio.json");
+    const scan = spawnSync(join(dir, "gitleaks"), [...opts, "--report-format=json", "--report-path", report], { cwd: root, stdio: "inherit" });
+    if (scan.status !== 0) {
+      if (existsSync(report)) {
+        const findings = JSON.parse(readFileSync(report, "utf8"));
+        for (const entry of findings) {
+          console.error("Revisar", entry.RuleID, JSON.stringify(entry.File), entry.StartLine, String(entry.Commit).slice(0,12));
+        }
+      }
+      throw Error("O verificador encontrou pendências no histórico ou falhou.");
+    }
     console.log("Varredura de segredos do histórico concluída.");
   } finally {
     rmSync(dir, { recursive: true, force: true });

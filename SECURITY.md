@@ -16,6 +16,20 @@ Cadastro, recuperação e reenvio respondem com a mesma mensagem para endereços
    - Alterar e-mail: `{{ .SiteURL }}/entrar#type=email_change&token={{ .TokenHash }}`
 6. **Turnstile e host.** Restrinja o widget ao hostname oficial. Configure `YBRD_TURNSTILE_SECRET` no servidor e `VITE_YBRD_TURNSTILE_SITE_KEY` no build. A API verifica token, hostname e ação. Sirva o site exclusivamente por HTTPS. Confirme os cabeçalhos do Worker no domínio final e configure HSTS e `nosniff` também na camada de arquivos estáticos quando ela responder antes do Worker. A CSP bloqueia iframes, inclusive a prévia embutida do editor. Abra a prévia em uma aba própria. A CSP permite estilos inline usados pelos componentes atuais.
 
+## Cobranças e expedição
+
+Configure `YBRD_MP_PRODUCTION_ORIGIN` com a origem HTTPS oficial, sem barra final, nos dois ambientes. Na produção, `YBRD_SITE_ORIGIN` deve coincidir com ela e `YBRD_MP_SANDBOX` deve ser `false`. Configure `YBRD_MP_COLLECTOR_ID` com o ID numérico do recebedor, o token de produção e o segredo do webhook. O servidor verifica a conta do vendedor antes de oferecer o checkout. Na homologação use outra origem, outro banco, `YBRD_MP_SANDBOX=true`, o ID do recebedor e as credenciais de teste (`YBRD_MP_TEST_*`).
+
+A aprovação exige que ambiente, recebedor, moeda, referência e valor correspondam ao pedido. O webhook assinado dispara uma consulta ao provedor. A expedição de pedidos pagos, inclusive antigos, consulta novamente o pagamento antes de avançar. Pedidos gratuitos conservam a referência interna vinculada ao total zero calculado no servidor. Na homologação, confira o retorno do Pix e do cartão, a entrega repetida da mesma notificação e o bloqueio do envio quando a confirmação estiver indisponível ou divergente.
+
+## Credenciais e acesso
+
+Mantenha valores reais no gerenciador de segredos da hospedagem. O CI verifica os arquivos rastreados e usa Gitleaks para examinar o histórico, com dados ocultados nos resultados. Para examinar um clone completo localmente, use `node scripts/check-secrets.mjs --history` com o Gitleaks instalado. Se uma credencial privada for confirmada no histórico, revogue-a no emissor e substitua-a. Confira a chave publicável antiga e seus consumidores no painel do Supabase.
+
+Aplique a migração `20261126010000_admin_mfa.sql` após as anteriores. Execute `node scripts/check-auth.mjs` no ambiente seguro com `SUPABASE_PROJECT_REF`, `SUPABASE_ACCESS_TOKEN` com permissão de leitura e `YBRD_SITE_ORIGIN`. O verificador consulta as opções de Auth, o estado das chaves legadas, os tipos de chave e o histórico de migrações. Uma consulta indisponível ou um controle ausente deixa a validação pendente.
+
+Em homologação, use dois clientes com um pedido cada e um administrador com TOTP. Cada cliente deve ver somente seus pedidos e endereços. O painel exige papel administrativo, sessão de login ativa e segundo fator concluído. Repita a verificação após a remoção do fator de uma conta de teste. Confira as cotas do Auth e o encaminhamento do IP pelo servidor.
+
 ## Checklist de homologação
 
 - Abra as cinco rotas de conta em celular e desktop. Teste o ícone, estados de carregamento, visibilidade de senha e navegação sem sessão. Confira CSP, `X-Frame-Options`, `nosniff`, HSTS, política de referrer e `no-store` no domínio HTTPS.
