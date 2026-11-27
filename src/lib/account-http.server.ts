@@ -666,5 +666,9 @@ export async function commerceAccount(request: Request) {
   });
   if (access !== "ok" && !(access === "mfa" && aal === "aal2"))
     throw new AccountError(401, "Entre novamente na sua conta.");
-  return { id: sub, client: backend(settings, token) };
+  return {
+    id: sub,
+    client: backend(settings, token),
+    verifiedMfa: access === "mfa" && aal === "aal2",
+  };
 }

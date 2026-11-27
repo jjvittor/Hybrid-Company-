@@ -132,7 +132,7 @@ end $$;
 do $$
 declare buyer uuid; sid uuid; token text; email text; label text;
 begin
-  foreach label in array array['primeiro','segundo'] loop
+  foreach label in array array['primeiro','segundo','administrador'] loop
     buyer := gen_random_uuid();
     sid := gen_random_uuid();
     token := encode(sha256(convert_to(label||sid::text,'UTF8')),'hex');
@@ -148,6 +148,8 @@ begin
     perform set_config('fixtures.'||label,jsonb_build_object('sub',buyer,'session_id',sid,'aal','aal1')::text,false);
   end loop;
 end $$;
+insert into public.user_roles(user_id,role) values ((current_setting('fixtures.administrador')::jsonb->>'sub')::uuid,'admin');
+insert into auth.mfa_factors(id,user_id,status) values (gen_random_uuid(),(current_setting('fixtures.administrador')::jsonb->>'sub')::uuid,'verified');
 set role authenticated;
 do $$
 declare label text; changed integer;
@@ -165,11 +167,43 @@ begin
     assert not has_table_privilege(current_user,'public.user_roles','INSERT');
   end loop;
 end $$;
+do $$
+declare claims jsonb := current_setting('fixtures.administrador')::jsonb;
+begin
+  perform set_config('request.jwt.claims',claims::text,false);
+  assert not public.has_role('admin');
+  perform set_config('request.jwt.claims',(claims || '{"aal":"aal2"}')::text,false);
+  assert public.has_role('admin');
+  perform set_config('request.jwt.claims',(current_setting('fixtures.primeiro')::jsonb || '{"aal":"aal2"}')::text,false);
+  assert not public.has_role('admin');
+end $$;
+reset role;
+delete from auth.mfa_factors where user_id=(current_setting('fixtures.administrador')::jsonb->>'sub')::uuid;
+set role authenticated;
+do $$ begin
+  perform set_config('request.jwt.claims',(current_setting('fixtures.administrador')::jsonb || '{"aal":"aal2"}')::text,false);
+  assert not public.has_role('admin');
+  perform set_config('request.jwt.claims',current_setting('fixtures.segundo'),false);
+end $$;
 reset role;
 delete from auth.sessions where id=(auth.jwt()->>'session_id')::uuid;
 set role authenticated;
 do $$ begin
   assert not exists(select id from public.profiles);
   assert not exists(select id from public.orders);
+end $$;
+reset role;
+
+-- Exercise the limiter boundary using synthetic timestamps in the disposable database.
+insert into ybrd_private.attempts(key,failures,attempt_times)
+  values ('fixture-mfa-account',0,array_fill(clock_timestamp(),array[4]));
+set role service_role;
+do $$
+declare decision jsonb;
+begin
+  decision := public.ybrd_attempt('fixture-mfa-ip','fixture-mfa-account',20,5,false);
+  assert (decision->>'allowed')::boolean and (decision->>'blocked')::boolean;
+  decision := public.ybrd_attempt('fixture-mfa-ip','fixture-mfa-account',20,5,false);
+  assert not (decision->>'allowed')::boolean;
 end $$;
 reset role;

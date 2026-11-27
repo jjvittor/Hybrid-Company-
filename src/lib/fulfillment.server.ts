@@ -8,11 +8,54 @@ import { orderAccessFragment, orderStatusLabels, type adminRefund } from "./paym
 
 export async function requireAdmin(request: Request) {
   const user = await requireCommerceAccount(request);
+  if (!user.verifiedMfa) throw new CommerceError(403, "Acesso administrativo restrito.");
   const access = await user.client.rpc("has_role", { p_role: "admin" });
   if (access.error || access.data !== true)
     throw new CommerceError(403, "Acesso administrativo restrito.");
   return user;
 }
+export async function verifyFulfillmentPayment(
+  db: SupabaseClient,
+  request: Request,
+  orderId: string,
+) {
+  const row = await db
+    .from("payments")
+    .select("provider,provider_payment_id,status,valor_centavos,orders!inner(total_centavos)")
+    .eq("order_id", orderId)
+    .maybeSingle();
+  if (row.error) throw new CommerceError(503, "Não foi possível conferir o pagamento.");
+  const payment = row.data;
+  const order = Array.isArray(payment?.orders) ? payment.orders[0] : payment?.orders;
+  const hold = new CommerceError(409, "Envio pendente de confirmação do pagamento.");
+  if (
+    !payment ||
+    !order ||
+    payment.status !== "aprovado" ||
+    !payment.provider_payment_id ||
+    !Number.isSafeInteger(order.total_centavos) ||
+    order.total_centavos < 0 ||
+    payment.valor_centavos !== order.total_centavos
+  )
+    throw hold;
+  const mock = mockAllowed(request);
+  if (payment.provider !== (mock ? "mock" : "mercado-pago")) throw hold;
+  const provider = paymentProvider(request);
+  if (order.total_centavos === 0) {
+    if (payment.provider_payment_id !== `sem-cobranca-${orderId}`) throw hold;
+    return;
+  }
+  if (mock) return;
+  // Reconcile both current and legacy approvals before authorizing physical fulfillment.
+  const receipt = await provider.consultar(payment.provider_payment_id);
+  if (
+    receipt.status !== "aprovado" ||
+    receipt.orderId !== orderId ||
+    receipt.cents !== order.total_centavos
+  )
+    throw hold;
+}
+
 export async function refundOrder(
   db: SupabaseClient,
   request: Request,

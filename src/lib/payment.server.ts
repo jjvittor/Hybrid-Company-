@@ -1,7 +1,7 @@
 import {
   validMaintenanceKey,
   verifyMercadoPagoSignature,
-  webhookSecret,
+  mercadoPagoCredentials,
 } from "./service-signatures.server";
 export { verifyMercadoPagoSignature } from "./service-signatures.server";
 import { verifyTurnstile } from "./turnstile.server";
@@ -38,29 +38,19 @@ export function mockAllowed(request: Request) {
     ["localhost", "127.0.0.1", "[::1]"].includes(new URL(request.url).hostname)
   );
 }
-function gatewayCredentials() {
-  const sandbox = process.env["YBRD_MP_SANDBOX"] !== "false";
-  return {
-    accessToken: sandbox
-      ? process.env["YBRD_MP_TEST_ACCESS_TOKEN"]
-      : process.env["YBRD_MP_ACCESS_TOKEN"],
-    publicKey:
-      (sandbox ? process.env["YBRD_MP_TEST_PUBLIC_KEY"] : process.env["YBRD_MP_PUBLIC_KEY"]) ??
-      null,
-    webhookSecret: webhookSecret(process.env),
-  };
-}
 export async function paymentConfig(db: SupabaseClient, request: Request): Promise<PaymentConfig> {
   const mock = mockAllowed(request);
   if (mockEnabled() && !mock) throw new CommerceError(503, "O pagamento está indisponível.");
-  const { accessToken, publicKey, webhookSecret } = gatewayCredentials();
-  const real = Boolean(accessToken && webhookSecret);
+  const credentials = mercadoPagoCredentials(process.env, new URL(request.url).origin);
+  if (!mock && !credentials)
+    throw new CommerceError(503, "Pagamento temporariamente indisponível.");
+  if (credentials?.live) await verifyLiveSeller(credentials);
+  const publicKey = credentials?.publicKey ?? null;
   const settings = await commerceSettings(db);
   return {
-    pix: real || mock,
-    cartao: mock || (real && Boolean(publicKey)),
+    pix: true,
+    cartao: mock || Boolean(publicKey),
     boleto:
-      (real || mock) &&
       settings.get("boleto_ativo") === true &&
       (mock || Boolean(process.env["YBRD_MP_BOLETO_METHOD"])),
     publicKey,
@@ -90,10 +80,12 @@ export interface PaymentProvider {
   criarBoleto(order: Charge): Promise<GatewayPayment>;
   consultar(id: string): Promise<GatewayPayment>;
   reembolsar(id: string, cents: number, key: string): Promise<{ approved: boolean; id: string }>;
-  verificarWebhook(request: Request, id: string): Promise<boolean>;
 }
+const providerId = z.union([z.number().int().positive(), z.string().regex(/^[1-9]\d{0,29}$/)]);
 const rawPayment = z.object({
-  id: z.union([z.number().int().nonnegative(), z.string().regex(/^\d{1,30}$/)]),
+  id: providerId,
+  live_mode: z.boolean(),
+  collector_id: providerId,
   external_reference: z.uuid(),
   status: z.string(),
   transaction_amount: z.union([z.number(), z.string()]),
@@ -111,10 +103,50 @@ const rawPayment = z.object({
     .nullish(),
   transaction_details: z.object({ external_resource_url: z.url().nullish() }).nullish(),
 });
-function parsePayment(raw: unknown): GatewayPayment {
+type Credentials = NonNullable<ReturnType<typeof mercadoPagoCredentials>>;
+
+// Share one short-lived verification across simultaneous checkouts on the same worker.
+let sellerCheck: { token: string; id: string; until: number; result: Promise<void> } | undefined;
+
+async function verifyLiveSeller(credentials: Credentials) {
+  if (
+    sellerCheck &&
+    sellerCheck.token === credentials.accessToken &&
+    sellerCheck.id === credentials.collectorId &&
+    sellerCheck.until > Date.now()
+  )
+    return sellerCheck.result;
+  const result = (async () => {
+    const response = await fetch("https://api.mercadolibre.com/users/me", {
+      headers: { Authorization: `Bearer ${credentials.accessToken}`, Accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!response.ok) throw new Error("seller unavailable");
+    const seller = z
+      .object({ id: providerId, tags: z.array(z.string()) })
+      .parse(await response.json());
+    if (String(seller.id) !== credentials.collectorId || seller.tags.includes("test_user"))
+      throw new Error("seller mismatch");
+  })().catch(() => {
+    if (sellerCheck?.result === result) sellerCheck = undefined;
+    throw new CommerceError(503, "Pagamento temporariamente indisponível.");
+  });
+  sellerCheck = {
+    token: credentials.accessToken,
+    id: credentials.collectorId,
+    until: Date.now() + 60000,
+    result,
+  };
+  return result;
+}
+
+function parsePayment(raw: unknown, credentials: Credentials): GatewayPayment {
   const result = rawPayment.safeParse(raw);
   if (!result.success) throw new CommerceError(502, "Não foi possível confirmar o pagamento.");
   const p = result.data;
+  if (p.live_mode !== credentials.live || String(p.collector_id) !== credentials.collectorId)
+    throw new CommerceError(409, "Não foi possível confirmar o pagamento para esta loja.");
   const cents = decimalCentavos(p.transaction_amount);
   if (cents === null)
     throw new CommerceError(502, "Não foi possível confirmar o valor do pagamento.");
@@ -155,14 +187,15 @@ function parsePayment(raw: unknown): GatewayPayment {
   };
 }
 export class MercadoPago implements PaymentProvider {
+  constructor(private readonly credentials: Credentials) {}
+
   private async api(path: string, payload?: object, idempotency?: string) {
-    const token = gatewayCredentials().accessToken;
-    if (!token) throw new CommerceError(503, "Pagamento temporariamente indisponível.");
     const response = await fetch(`https://api.mercadopago.com/v1/payments${path}`, {
       method: payload ? "POST" : "GET",
       signal: AbortSignal.timeout(9000),
+      redirect: "error",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${this.credentials.accessToken}`,
         Accept: "application/json",
         ...(payload ? { "Content-Type": "application/json" } : {}),
         ...(idempotency ? { "X-Idempotency-Key": idempotency } : {}),
@@ -191,31 +224,40 @@ export class MercadoPago implements PaymentProvider {
             },
           }
         : {};
-    return parsePayment(
-      await this.api(
-        "",
-        {
-          transaction_amount: order.total_centavos / 100,
-          description: "Pedido YBRD",
-          external_reference: order.id,
-          payment_method_id: paymentMethodId,
-          payer: {
-            ...billing,
-            email: order.email,
-            identification: { type: "CPF", number: order.cpf },
-          },
-          notification_url: `${origin}/api/loja/webhook-mercado-pago`,
-          ...(card
-            ? {
-                token: card.token,
-                installments: order.parcelas,
-                ...(card.issuerId ? { issuer_id: card.issuerId } : {}),
-              }
-            : { date_of_expiration: order.expira_em }),
+    const raw = await this.api(
+      "",
+      {
+        transaction_amount: order.total_centavos / 100,
+        description: "Pedido YBRD",
+        external_reference: order.id,
+        payment_method_id: paymentMethodId,
+        payer: {
+          ...billing,
+          email: order.email,
+          identification: { type: "CPF", number: order.cpf },
         },
-        order.id,
-      ),
+        notification_url: `${origin}/api/loja/webhook-mercado-pago`,
+        ...(card
+          ? {
+              token: card.token,
+              installments: order.parcelas,
+              ...(card.issuerId ? { issuer_id: card.issuerId } : {}),
+            }
+          : { date_of_expiration: order.expira_em }),
+      },
+      order.id,
     );
+    // Some creation responses are partial. Look up the receipt without issuing another charge.
+    const receipt = z
+      .object({
+        id: providerId,
+        live_mode: z.boolean().nullish(),
+        collector_id: providerId.nullish(),
+      })
+      .safeParse(raw);
+    if (receipt.success && (receipt.data.live_mode == null || receipt.data.collector_id == null))
+      return this.consultar(String(receipt.data.id));
+    return parsePayment(raw, this.credentials);
   }
   criarPix(order: Charge) {
     return this.create(order, "pix");
@@ -232,17 +274,16 @@ export class MercadoPago implements PaymentProvider {
   }
   async consultar(id: string) {
     if (!/^\d{1,30}$/.test(id)) throw new CommerceError(400, "Pagamento inválido.");
-    return parsePayment(await this.api(`/${id}`));
+    const payment = parsePayment(await this.api(`/${id}`), this.credentials);
+    if (payment.id !== id) throw new CommerceError(409, "Não foi possível confirmar o pagamento.");
+    return payment;
   }
   async reembolsar(id: string, cents: number, key: string) {
-    if (!/^\d{1,30}$/.test(id)) throw new CommerceError(400, "Pagamento inválido.");
+    await this.consultar(id);
     const result = z
       .object({ id: z.union([z.string(), z.number()]), status: z.string() })
       .parse(await this.api(`/${id}/refunds`, { amount: cents / 100 }, key));
     return { id: String(result.id), approved: result.status === "approved" };
-  }
-  verificarWebhook(request: Request, id: string) {
-    return verifyMercadoPagoSignature(request, id, gatewayCredentials().webhookSecret ?? "");
   }
 }
 class MockPayment implements PaymentProvider {
@@ -270,12 +311,12 @@ class MockPayment implements PaymentProvider {
   async reembolsar(_id: string, _cents: number, key: string) {
     return { id: `mock-${key}`, approved: true };
   }
-  async verificarWebhook() {
-    return false;
-  }
 }
 export function paymentProvider(request: Request) {
-  return mockAllowed(request) ? new MockPayment() : new MercadoPago();
+  if (mockAllowed(request)) return new MockPayment();
+  const credentials = mercadoPagoCredentials(process.env, new URL(request.url).origin);
+  if (!credentials) throw new CommerceError(503, "Pagamento temporariamente indisponível.");
+  return new MercadoPago(credentials);
 }
 export async function applyPayment(db: SupabaseClient, payment: GatewayPayment, provider: string) {
   return commerceRpc<string>(db, "commerce_payment_update", {
@@ -387,15 +428,24 @@ export async function payCheckout(
 const webhook = z.object({
   id: z.union([z.number().int().nonnegative(), z.string().max(100)]),
   type: z.literal("payment"),
+  live_mode: z.boolean().optional(),
   data: z.object({ id: z.union([z.number().int().nonnegative(), z.string().regex(/^\d{1,30}$/)]) }),
 });
 export async function queueMercadoPagoWebhook(db: SupabaseClient, request: Request) {
   const paymentId = new URL(request.url).searchParams.get("data.id") ?? "";
-  if (!(await new MercadoPago().verificarWebhook(request, paymentId)))
+  const credentials = mercadoPagoCredentials(process.env, new URL(request.url).origin);
+  if (
+    !credentials ||
+    !(await verifyMercadoPagoSignature(request, paymentId, credentials.webhookSecret))
+  )
     throw new CommerceError(401, "Evento não autorizado.");
   const payload = await readCommerceBody(request, 16384);
   const result = webhook.safeParse(payload);
-  if (!result.success || String(result.data.data.id) !== paymentId)
+  if (
+    !result.success ||
+    String(result.data.data.id) !== paymentId ||
+    (result.data.live_mode !== undefined && result.data.live_mode !== credentials.live)
+  )
     throw new CommerceError(400, "Evento inválido.");
   const saved = await db.from("webhook_events").upsert(
     {
@@ -409,10 +459,12 @@ export async function queueMercadoPagoWebhook(db: SupabaseClient, request: Reque
   return { recebido: true };
 }
 export async function processPaymentEvents(db: SupabaseClient) {
+  const credentials = mercadoPagoCredentials(process.env);
+  if (!credentials) return 0;
   const events = await commerceRpc<
     { provider_event_id: string; payment_reference: string; tentativas: number }[]
   >(db, "commerce_claim_webhooks", { p_limit: 4 });
-  const provider = new MercadoPago();
+  const provider = new MercadoPago(credentials);
   for (const event of events) {
     try {
       const payment = await provider.consultar(event.payment_reference);

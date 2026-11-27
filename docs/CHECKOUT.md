@@ -21,7 +21,7 @@ Tabelas previstas: `products`, `product_variants`, `carts`, `cart_items`, `stock
 
 A mudança mínima de catálogo é relacionar SKU e tamanho ao slug existente. Cadastro comercial começa inativo até confirmar estoque, dimensões, peso e tiragem. Produtos gerados são referências visuais e precisam corresponder às peças reais antes de ativar vendas. Para convidado, sacola local guarda só identificadores e quantidades. Endereços, CPF, tokens de pagamento e credenciais ficam fora do armazenamento persistente do navegador.
 
-Configuração prevista: `SUPABASE_URL`, `YBRD_SUPABASE_SECRET_KEY`, `YBRD_SITE_ORIGIN`, `YBRD_CHECKOUT_ENABLED`, `YBRD_MELHOR_ENVIO_TOKEN`, `YBRD_MELHOR_ENVIO_SANDBOX`, `YBRD_MP_ACCESS_TOKEN`, `YBRD_MP_WEBHOOK_SECRET`, `YBRD_PAYMENT_MOCK`, `YBRD_EMAIL_API_KEY`, `YBRD_EMAIL_FROM`. Valores de frete, parcelamento e cupons vêm do banco. Nenhuma migração é aplicada em produção por este trabalho.
+Configuração prevista: `SUPABASE_URL`, `YBRD_SUPABASE_SECRET_KEY`, `YBRD_SITE_ORIGIN`, `YBRD_CHECKOUT_ENABLED`, `YBRD_MELHOR_ENVIO_TOKEN`, `YBRD_MELHOR_ENVIO_SANDBOX`, `YBRD_MP_PRODUCTION_ORIGIN`, `YBRD_MP_SANDBOX`, `YBRD_MP_COLLECTOR_ID`, `YBRD_MP_ACCESS_TOKEN`, `YBRD_MP_WEBHOOK_SECRET`, `YBRD_PAYMENT_MOCK`, `YBRD_EMAIL_API_KEY`, `YBRD_EMAIL_FROM`. Valores de frete, parcelamento e cupons vêm do banco. Nenhuma migração é aplicada em produção por este trabalho.
 
 O texto anexado termina na fase 6. As regras brasileiras de venda, privacidade, troca e devolução exigem dados reais da empresa e revisão antes de liberar pedidos. Um checkbox genérico não substitui políticas publicadas. O lint inicial apontou 935 erros e 10 avisos, quase todos de formatação. Essa linha de base foi registrada antes de editar código.
 

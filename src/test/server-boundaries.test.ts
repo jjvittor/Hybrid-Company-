@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { authorizedOrder } from "@/lib/orders.server";
+import { requireAdmin } from "@/lib/fulfillment.server";
 import { digest } from "@/lib/checkout.server";
 import { commerceAccount, handleAccount } from "@/lib/account-http.server";
 import { handleCommerce } from "@/lib/commerce-http.server";
@@ -44,7 +45,7 @@ afterEach(() => {
 
 describe("Sessões da conta na loja", () => {
   // An opaque test token makes the SDK verify with /auth/v1/user.
-  function mockSession(access: string | null, aal = "aal1") {
+  function mockSession(access: string | null, aal = "aal1", adminRole = false) {
     const token = [
       "eyJhbGciOiJIUzI1NiJ9",
       Buffer.from(
@@ -60,6 +61,7 @@ describe("Sessões da conta na loja", () => {
     const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/auth/v1/user")) return Response.json({ id: user });
+      if (url.endsWith("/rpc/has_role")) return Response.json(adminRole);
       if (url.endsWith("/rpc/ybrd_session_access")) {
         expect(JSON.parse(String(init?.body))).toEqual({
           p_id: session,
@@ -79,6 +81,20 @@ describe("Sessões da conta na loja", () => {
   it("nega decisão de sessão desconhecida mesmo com segundo fator", async () => {
     await expect(commerceAccount(mockSession("unexpected", "aal2"))).rejects.toMatchObject({
       status: 401,
+    });
+  });
+  it("exige papel, fator ativo e sessão que concluiu o desafio administrativo", async () => {
+    await expect(requireAdmin(mockSession("ok", "aal2", true))).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(requireAdmin(mockSession("mfa", "aal1", true))).rejects.toMatchObject({
+      status: 401,
+    });
+    await expect(requireAdmin(mockSession("mfa", "aal2", false))).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(requireAdmin(mockSession("mfa", "aal2", true))).resolves.toMatchObject({
+      id: user,
     });
   });
   it("rejeita sessões revogadas", async () => {

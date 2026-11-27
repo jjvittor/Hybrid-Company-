@@ -1,0 +1,28 @@
+title = "YBRD"
+[extend]
+useDefault = true
+
+[[rules]]
+id = "ybrd-supabase-secret"
+description = "Credencial privada do Supabase"
+regex = '''\bsb_secret_[A-Za-z0-9_-]{20,}\b'''
+keywords = ["sb_secret_"]
+
+[[rules]]
+id = "ybrd-mercado-pago-token"
+description = "Token privado do Mercado Pago"
+regex = '''(?i)(?:MP_(?:TEST_)?ACCESS_TOKEN|access_token)["']?\s*[:=]\s*["']?((?:APP_USR|TEST)-[A-Za-z0-9_-]{20,})'''
+secretGroup = 1
+keywords = ["APP_USR-", "TEST-"]
+
+[[allowlists]]
+description = "Chave publicável do Supabase"
+regexTarget = "secret"
+regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']
+
+[[allowlists]]
+description = "Nome público fixo do armazenamento local de cupons"
+condition = "AND"
+paths = ['''^src/lib/checkout\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*export const couponStorageKey = "ybrd-cupom-v1";\s*$''']

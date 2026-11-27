@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import {
   validMaintenanceKey,
   verifyMercadoPagoSignature,
-  webhookSecret,
+  mercadoPagoCredentials,
 } from "../src/lib/service-signatures.server.ts";
 
 const quotas = new Map([
@@ -52,7 +52,7 @@ export function withTrafficBudget(origin) {
           : await verifyMercadoPagoSignature(
               request,
               new URL(request.url).searchParams.get("data.id") ?? "",
-              webhookSecret(env) ?? "",
+              mercadoPagoCredentials(env, new URL(request.url).origin)?.webhookSecret ?? "",
             );
       if (!authorized)
         return Response.json(
