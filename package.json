@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "pretest": "node scripts/check-secrets.mjs",
+    "pretest": "node scripts/format-review.mjs && node scripts/check-secrets.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
