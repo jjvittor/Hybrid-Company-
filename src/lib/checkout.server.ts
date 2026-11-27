@@ -137,25 +137,26 @@ export async function getPolicies(db: SupabaseClient) {
 export async function reviewCheckout(
   db: SupabaseClient,
   input: CheckoutInput,
-  actorHash: string,
+  actor: Awaited<ReturnType<typeof orderActor>>,
 ): Promise<CheckoutReview> {
   await getPolicies(db);
   const customer = await signCommerce(`cpf:${input.contato.cpf}`);
   const shipping = await quoteShipping(db, input.endereco.cep, input.items);
   const option = shipping.options.find((o) => o.id === input.freteId);
   if (!option) throw new CommerceError(409, "Escolha uma opção de entrega disponível.");
-  const price = await commerceRpc<CheckoutPrice>(db, "commerce_price", {
+  const price = await commerceRpc<CheckoutPrice>(db, "commerce_price_for_account", {
     p_items: input.items,
     p_shipping: option.precoCentavos,
     p_coupon: input.cupom,
     p_customer: customer,
+    p_user: actor.user,
     p_method: input.metodo,
   });
   if (input.parcelas > price.parcelas_maximas)
     throw new CommerceError(422, "Escolha menos parcelas para este valor.");
   const reviewToken = await signCommerce(
     JSON.stringify([
-      actorHash,
+      actor.hash,
       customer,
       input.contato.email,
       input.endereco,
@@ -185,7 +186,7 @@ export async function placeCheckout(
       ...prior.data,
       repetido: true,
     };
-  const { reviewToken, frete, ...price } = await reviewCheckout(db, input, actor.hash);
+  const { reviewToken, frete, ...price } = await reviewCheckout(db, input, actor);
   if (!equalSecret(reviewToken, input.reviewToken))
     throw new CommerceError(409, "Os valores mudaram. Revise o pedido novamente.");
   const id = crypto.randomUUID();

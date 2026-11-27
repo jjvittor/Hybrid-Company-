@@ -129,14 +129,17 @@ describe("Limites HTTP", () => {
       await readCommerceBody(request("/api/loja/sacola", "{}", { "content-type": type })),
     ).toEqual({});
   });
-  it.each(["text/plain", "text/html", "application/x-www-form-urlencoded"])(
-    "rejeita formato %s",
-    async (type) => {
-      await expect(
-        readCommerceBody(request("/api/loja/sacola", "{}", { "content-type": type })),
-      ).rejects.toMatchObject({ status: 415 });
-    },
-  );
+  it.each([
+    "text/plain",
+    "text/html",
+    "application/x-www-form-urlencoded",
+    "multipart/form-data",
+    "image/png",
+  ])("rejeita formato %s", async (type) => {
+    await expect(
+      readCommerceBody(request("/api/loja/sacola", "{}", { "content-type": type })),
+    ).rejects.toMatchObject({ status: 415 });
+  });
   it.each(["{", "undefined", ""])("rejeita JSON inválido %s", async (body) => {
     await expect(readCommerceBody(request("/api/loja/sacola", body))).rejects.toMatchObject({
       status: 400,
@@ -279,4 +282,10 @@ describe("Autorização de pedidos", () => {
       authorizedOrder(database(null), request("/api/loja/pedido-detalhe"), { id: session }),
     ).rejects.toMatchObject({ status: 404, message: "Pedido não encontrado." });
   });
+});
+
+it.each(["chat", "upload"])("mantém a operação %s fora da API da loja", async (operation) => {
+  vi.stubEnv("YBRD_CHECKOUT_ENABLED", "true");
+  const response = await handleCommerce(request(`/api/loja/${operation}`), operation);
+  expect(response.status).toBe(404);
 });

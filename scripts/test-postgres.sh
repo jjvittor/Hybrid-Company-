@@ -23,4 +23,28 @@ done
 wait "$first"
 wait "$second"
 "${pg[@]}" -c "do \$\$ begin assert (select count(*) from public.stock_reservations)=1; end \$\$"
-echo "PostgreSQL checks passed, including two concurrent checkouts."
+"${pg[@]}" -c "update public.orders set status='expirado' where status='aguardando_pagamento'"
+"${pg[@]}" -f tests/postgres/checkout-integrity.sql
+# Both buyers have completed the normal verification and request the last physical unit.
+"${pg[@]}" <<'SQL'
+update public.product_variants set estoque=1 where product_id=(select id from public.products where slug='vaso-forma-areia');
+create function fixtures.buy_last(label text) returns text language plpgsql as $
+declare result jsonb;
+begin
+  result := public.commerce_place_guarded(fixtures.order_input(label,1,true));
+  if result ? 'id' then return 'reserved'; end if;
+  raise exception 'unexpected checkout result';
+exception when raise_exception then
+  if sqlerrm='commerce_out_of_stock' then return 'sold-out'; end if;
+  raise;
+end $;
+SQL
+for buyer in primeiro segundo; do
+  "${pg[@]}" -Atc "set role service_role; select fixtures.buy_last('ultima-$buyer')" > "$cluster/$buyer" &
+  if [[ $buyer == primeiro ]]; then first=$!; else second=$!; fi
+done
+wait "$first"
+wait "$second"
+[[ $(sort "$cluster/primeiro" "$cluster/segundo") == $'reserved\nsold-out' ]]
+"${pg[@]}" -c "do \$\$ begin assert (select sum(quantidade)=1 from public.stock_reservations); end \$\$"
+echo "PostgreSQL checks passed, including the last-unit race and coupon limits."

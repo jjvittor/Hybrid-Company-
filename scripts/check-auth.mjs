@@ -50,7 +50,7 @@ if (!ref || !/^[a-z0-9]{20}$/.test(ref) || !token || !origin) {
       [
         "Migrações de segurança aplicadas",
         Array.isArray(migrations) &&
-          ["20261110150000", "20261119010000", "20261126010000"].every((v) =>
+          ["20261110150000", "20261119010000", "20261126010000", "20261127010000"].every((v) =>
             migrations.some((m) => m.version === v),
           ),
       ],

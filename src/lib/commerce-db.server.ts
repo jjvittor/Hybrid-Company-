@@ -59,6 +59,8 @@ export async function commerceRpc<T>(
   params: Record<string, unknown>,
 ): Promise<T> {
   const result = await db.rpc(name, params);
+  if (result.error?.message === "commerce_coupon_account")
+    throw new CommerceError(422, "Entre com uma conta confirmada para usar este cupom.");
   if (result.error) throw new CommerceError(409, "Confira os dados e tente novamente.");
   return result.data as T;
 }

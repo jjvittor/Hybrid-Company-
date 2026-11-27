@@ -286,7 +286,7 @@ export async function handleCommerce(request: Request, operation: string, contex
       if (operation === "revisao") {
         const parsed = checkoutSchema.parse(body);
         const actor = await orderActor(request, responseHeaders, parsed.account);
-        return Response.json(await reviewCheckout(db, parsed, actor.hash), {
+        return Response.json(await reviewCheckout(db, parsed, actor), {
           headers: responseHeaders,
         });
       }

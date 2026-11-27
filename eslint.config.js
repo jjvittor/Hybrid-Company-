@@ -20,6 +20,17 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message: "Renderize conteúdo como texto React.",
+        },
+        {
+          selector: "MemberExpression[property.name=/^(innerHTML|outerHTML|insertAdjacentHTML)$/]",
+          message: "Use textContent ou elementos React para conteúdo dinâmico.",
+        },
+      ],
       "no-restricted-imports": [
         "error",
         {
