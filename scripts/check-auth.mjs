@@ -20,7 +20,10 @@ if (!ref || !/^[a-z0-9]{20}$/.test(ref) || !token || !origin) {
       return res.json();
     };
     const [config, keys, legacy, migrations] = await Promise.all([
-      get("config/auth"), get("api-keys?reveal=false"), get("api-keys/legacy"), get("database/migrations"),
+      get("config/auth"),
+      get("api-keys?reveal=false"),
+      get("api-keys/legacy"),
+      get("database/migrations"),
     ]);
     const urls = String(config.uri_allow_list ?? "")
       .split(",")
@@ -33,12 +36,24 @@ if (!ref || !/^[a-z0-9]{20}$/.test(ref) || !token || !origin) {
         config.security_captcha_enabled === true &&
           config.security_captcha_provider === "turnstile",
       ],
-      ["TOTP habilitado para cadastro e verificação", config.mfa_totp_enroll_enabled === true && config.mfa_totp_verify_enabled === true],
+      [
+        "TOTP habilitado para cadastro e verificação",
+        config.mfa_totp_enroll_enabled === true && config.mfa_totp_verify_enabled === true,
+      ],
       ["Chaves legadas desativadas", legacy?.enabled === false],
-      ["Gateway sem chaves publicáveis ativas", Array.isArray(keys) &&
-        keys.some((key) => key?.type === "secret") && keys.every((key) => key?.type === "secret" || key?.type === "legacy")],
-      ["Migrações de segurança aplicadas", Array.isArray(migrations) &&
-        ["20261110150000","20261119010000","20261126010000"].every((v) => migrations.some((m) => m.version === v))],
+      [
+        "Gateway sem chaves publicáveis ativas",
+        Array.isArray(keys) &&
+          keys.some((key) => key?.type === "secret") &&
+          keys.every((key) => key?.type === "secret" || key?.type === "legacy"),
+      ],
+      [
+        "Migrações de segurança aplicadas",
+        Array.isArray(migrations) &&
+          ["20261110150000", "20261119010000", "20261126010000"].every((v) =>
+            migrations.some((m) => m.version === v),
+          ),
+      ],
       ["Confirmação de e-mail", config.mailer_autoconfirm === false],
       ["IP encaminhado pelo servidor da loja", config.security_sb_forwarded_for_enabled === true],
       [

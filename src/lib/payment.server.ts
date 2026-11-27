@@ -42,7 +42,8 @@ export async function paymentConfig(db: SupabaseClient, request: Request): Promi
   const mock = mockAllowed(request);
   if (mockEnabled() && !mock) throw new CommerceError(503, "O pagamento está indisponível.");
   const credentials = mercadoPagoCredentials(process.env, new URL(request.url).origin);
-  if (!mock && !credentials) throw new CommerceError(503, "Pagamento temporariamente indisponível.");
+  if (!mock && !credentials)
+    throw new CommerceError(503, "Pagamento temporariamente indisponível.");
   if (credentials?.live) await verifyLiveSeller(credentials);
   const publicKey = credentials?.publicKey ?? null;
   const settings = await commerceSettings(db);
@@ -122,14 +123,21 @@ async function verifyLiveSeller(credentials: Credentials) {
       signal: AbortSignal.timeout(9000),
     });
     if (!response.ok) throw new Error("seller unavailable");
-    const seller = z.object({ id: providerId, tags: z.array(z.string()) }).parse(await response.json());
+    const seller = z
+      .object({ id: providerId, tags: z.array(z.string()) })
+      .parse(await response.json());
     if (String(seller.id) !== credentials.collectorId || seller.tags.includes("test_user"))
       throw new Error("seller mismatch");
   })().catch(() => {
     if (sellerCheck?.result === result) sellerCheck = undefined;
     throw new CommerceError(503, "Pagamento temporariamente indisponível.");
   });
-  sellerCheck = { token: credentials.accessToken, id: credentials.collectorId, until: Date.now() + 60000, result };
+  sellerCheck = {
+    token: credentials.accessToken,
+    id: credentials.collectorId,
+    until: Date.now() + 60000,
+    result,
+  };
   return result;
 }
 
@@ -217,32 +225,36 @@ export class MercadoPago implements PaymentProvider {
           }
         : {};
     const raw = await this.api(
-        "",
-        {
-          transaction_amount: order.total_centavos / 100,
-          description: "Pedido YBRD",
-          external_reference: order.id,
-          payment_method_id: paymentMethodId,
-          payer: {
-            ...billing,
-            email: order.email,
-            identification: { type: "CPF", number: order.cpf },
-          },
-          notification_url: `${origin}/api/loja/webhook-mercado-pago`,
-          ...(card
-            ? {
-                token: card.token,
-                installments: order.parcelas,
-                ...(card.issuerId ? { issuer_id: card.issuerId } : {}),
-              }
-            : { date_of_expiration: order.expira_em }),
+      "",
+      {
+        transaction_amount: order.total_centavos / 100,
+        description: "Pedido YBRD",
+        external_reference: order.id,
+        payment_method_id: paymentMethodId,
+        payer: {
+          ...billing,
+          email: order.email,
+          identification: { type: "CPF", number: order.cpf },
         },
-        order.id,
+        notification_url: `${origin}/api/loja/webhook-mercado-pago`,
+        ...(card
+          ? {
+              token: card.token,
+              installments: order.parcelas,
+              ...(card.issuerId ? { issuer_id: card.issuerId } : {}),
+            }
+          : { date_of_expiration: order.expira_em }),
+      },
+      order.id,
     );
     // Some creation responses are partial. Look up the receipt without issuing another charge.
-    const receipt = z.object({
-      id: providerId, live_mode: z.boolean().nullish(), collector_id: providerId.nullish(),
-    }).safeParse(raw);
+    const receipt = z
+      .object({
+        id: providerId,
+        live_mode: z.boolean().nullish(),
+        collector_id: providerId.nullish(),
+      })
+      .safeParse(raw);
     if (receipt.success && (receipt.data.live_mode == null || receipt.data.collector_id == null))
       return this.consultar(String(receipt.data.id));
     return parsePayment(raw, this.credentials);
@@ -422,12 +434,18 @@ const webhook = z.object({
 export async function queueMercadoPagoWebhook(db: SupabaseClient, request: Request) {
   const paymentId = new URL(request.url).searchParams.get("data.id") ?? "";
   const credentials = mercadoPagoCredentials(process.env, new URL(request.url).origin);
-  if (!credentials || !(await verifyMercadoPagoSignature(request, paymentId, credentials.webhookSecret)))
+  if (
+    !credentials ||
+    !(await verifyMercadoPagoSignature(request, paymentId, credentials.webhookSecret))
+  )
     throw new CommerceError(401, "Evento não autorizado.");
   const payload = await readCommerceBody(request, 16384);
   const result = webhook.safeParse(payload);
-  if (!result.success || String(result.data.data.id) !== paymentId ||
-      (result.data.live_mode !== undefined && result.data.live_mode !== credentials.live))
+  if (
+    !result.success ||
+    String(result.data.data.id) !== paymentId ||
+    (result.data.live_mode !== undefined && result.data.live_mode !== credentials.live)
+  )
     throw new CommerceError(400, "Evento inválido.");
   const saved = await db.from("webhook_events").upsert(
     {

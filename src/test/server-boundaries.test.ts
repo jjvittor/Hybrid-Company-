@@ -84,10 +84,18 @@ describe("Sessões da conta na loja", () => {
     });
   });
   it("exige papel, fator ativo e sessão que concluiu o desafio administrativo", async () => {
-    await expect(requireAdmin(mockSession("ok", "aal2", true))).rejects.toMatchObject({ status: 403 });
-    await expect(requireAdmin(mockSession("mfa", "aal1", true))).rejects.toMatchObject({ status: 401 });
-    await expect(requireAdmin(mockSession("mfa", "aal2", false))).rejects.toMatchObject({ status: 403 });
-    await expect(requireAdmin(mockSession("mfa", "aal2", true))).resolves.toMatchObject({ id: user });
+    await expect(requireAdmin(mockSession("ok", "aal2", true))).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(requireAdmin(mockSession("mfa", "aal1", true))).rejects.toMatchObject({
+      status: 401,
+    });
+    await expect(requireAdmin(mockSession("mfa", "aal2", false))).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(requireAdmin(mockSession("mfa", "aal2", true))).resolves.toMatchObject({
+      id: user,
+    });
   });
   it("rejeita sessões revogadas", async () => {
     await expect(commerceAccount(mockSession(null))).rejects.toMatchObject({ status: 401 });

@@ -19,3 +19,10 @@ keywords = ["APP_USR-", "TEST-"]
 description = "Chave publicável do Supabase"
 regexTarget = "secret"
 regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']
+
+[[allowlists]]
+description = "Nome público fixo do armazenamento local de cupons"
+condition = "AND"
+paths = ['''^src/lib/checkout\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*export const couponStorageKey = "ybrd-cupom-v1";\s*$''']

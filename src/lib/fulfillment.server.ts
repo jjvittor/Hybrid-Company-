@@ -14,8 +14,13 @@ export async function requireAdmin(request: Request) {
     throw new CommerceError(403, "Acesso administrativo restrito.");
   return user;
 }
-export async function verifyFulfillmentPayment(db: SupabaseClient, request: Request, orderId: string) {
-  const row = await db.from("payments")
+export async function verifyFulfillmentPayment(
+  db: SupabaseClient,
+  request: Request,
+  orderId: string,
+) {
+  const row = await db
+    .from("payments")
     .select("provider,provider_payment_id,status,valor_centavos,orders!inner(total_centavos)")
     .eq("order_id", orderId)
     .maybeSingle();
@@ -23,9 +28,16 @@ export async function verifyFulfillmentPayment(db: SupabaseClient, request: Requ
   const payment = row.data;
   const order = Array.isArray(payment?.orders) ? payment.orders[0] : payment?.orders;
   const hold = new CommerceError(409, "Envio pendente de confirmação do pagamento.");
-  if (!payment || !order || payment.status !== "aprovado" || !payment.provider_payment_id ||
-      !Number.isSafeInteger(order.total_centavos) || order.total_centavos < 0 ||
-      payment.valor_centavos !== order.total_centavos) throw hold;
+  if (
+    !payment ||
+    !order ||
+    payment.status !== "aprovado" ||
+    !payment.provider_payment_id ||
+    !Number.isSafeInteger(order.total_centavos) ||
+    order.total_centavos < 0 ||
+    payment.valor_centavos !== order.total_centavos
+  )
+    throw hold;
   const mock = mockAllowed(request);
   if (payment.provider !== (mock ? "mock" : "mercado-pago")) throw hold;
   const provider = paymentProvider(request);
@@ -36,7 +48,11 @@ export async function verifyFulfillmentPayment(db: SupabaseClient, request: Requ
   if (mock) return;
   // Reconcile both current and legacy approvals before authorizing physical fulfillment.
   const receipt = await provider.consultar(payment.provider_payment_id);
-  if (receipt.status !== "aprovado" || receipt.orderId !== orderId || receipt.cents !== order.total_centavos)
+  if (
+    receipt.status !== "aprovado" ||
+    receipt.orderId !== orderId ||
+    receipt.cents !== order.total_centavos
+  )
     throw hold;
 }
 

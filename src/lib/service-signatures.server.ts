@@ -21,9 +21,11 @@ export function mercadoPagoCredentials(
       return null;
   } else {
     const production = env["YBRD_MP_PRODUCTION_ORIGIN"];
-    if (!production || !production.startsWith("https://") || site.protocol !== "https:") return null;
+    if (!production || !production.startsWith("https://") || site.protocol !== "https:")
+      return null;
     try {
-      if (new URL(production).origin !== production || (origin === production) !== live) return null;
+      if (new URL(production).origin !== production || (origin === production) !== live)
+        return null;
     } catch {
       return null;
     }
