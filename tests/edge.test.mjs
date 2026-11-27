@@ -82,6 +82,11 @@ test("a cota compartilhada de visitantes preserva notificações e manutenção"
   mock.timers.enable({ apis: ["Date"], now: Date.parse("2026-11-19T12:00:00Z") });
   const env = {
       YBRD_TRAFFIC: binding(),
+      YBRD_MP_SANDBOX: "true",
+      YBRD_SITE_ORIGIN: "https://loja.example.test",
+      YBRD_MP_PRODUCTION_ORIGIN: "https://producao.example.test",
+      YBRD_MP_TEST_COLLECTOR_ID: "700",
+      YBRD_MP_TEST_ACCESS_TOKEN: "token-ficticio-do-provedor",
       YBRD_MP_TEST_WEBHOOK_SECRET: "chave-ficticia-do-provedor",
       YBRD_COMMERCE_CRON_SECRET: "c".repeat(32),
     },

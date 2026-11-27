@@ -1,4 +1,4 @@
-import { processCommerceEmails, refundOrder, requireAdmin } from "./fulfillment.server";
+import { processCommerceEmails, refundOrder, requireAdmin, verifyFulfillmentPayment } from "./fulfillment.server";
 import { adminRefund, adminTransition, returnInput } from "./payment";
 import { orderDetail } from "./orders.server";
 import {
@@ -119,7 +119,7 @@ export async function handleCommerce(request: Request, operation: string, contex
     if (operation === "politicas") return Response.json(await getPolicies(db), { headers });
     if (operation === "enderecos") {
       const user = await requireCommerceAccount(request);
-      const result = await db
+      const result = await user.client
         .from("addresses")
         .select("id,endereco")
         .eq("user_id", user.id)
@@ -143,7 +143,7 @@ export async function handleCommerce(request: Request, operation: string, contex
     }
     if (operation === "pedidos") {
       const user = await requireCommerceAccount(request);
-      const result = await db
+      const result = await user.client
         .from("orders")
         .select("id,numero,status,total_centavos,criado_em,rastreio")
         .eq("user_id", user.id)
@@ -192,6 +192,7 @@ export async function handleCommerce(request: Request, operation: string, contex
       }
       if (operation === "admin-status") {
         const input = adminTransition.parse(body);
+        if (input.status !== "cancelado") await verifyFulfillmentPayment(db, request, input.id);
         await commerceRpc(db, "commerce_admin_transition", {
           p_order: input.id,
           p_status: input.status,
